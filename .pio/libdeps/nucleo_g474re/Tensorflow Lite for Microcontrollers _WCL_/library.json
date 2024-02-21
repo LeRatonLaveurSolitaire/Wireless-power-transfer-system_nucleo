@@ -1,0 +1,22 @@
+{
+	"name": "Tensorflow Lite for Microcontrollers (WCL)",
+	"version": "1.1.0",
+	"description": "TFLite for Microcontrollers built for PlatformIO. Up to date as of Aug 20, 2023.",
+	"repository":
+  {
+    "type": "git",
+    "url": "https://github.com/trylaarsdam/pio-tflite-lib.git"
+  },
+	"authors": 
+	[
+		{
+			"name": "Todd Rylaarsdam",
+			"email": "todd@toddr.org",
+			"url": "https://toddr.org",
+			"maintainer": true
+		}
+	],
+	"frameworks": "Arduino",
+  "platforms": "*",
+	"keywords": "tensorflow, tflm, tflite, lite, micro"
+}
