@@ -1,0 +1,215 @@
+Neural Network Tools for STM32 family v1.7.0 (stm.ai v8.1.0-19520)
+Created date          : 2024-03-09 20:07:16
+Parameters            : generate --name network -m C:/Users/thoma/Documents/ENS/ARPE/Wireless-power-transfer-system_simulation/models/model.onnx --type onnx --compression low --verbosity 1 --workspace C:\Users\thoma\AppData\Local\Temp\mxAI_workspace17030395583700016380648160656160811 --output C:\Users\thoma\.stm32cubemx\network_output --allocate-inputs --series stm32g4 --allocate-outputs
+
+Exec/report summary (generate)
+-----------------------------------------------------------------------------------------------------------------------
+model file         :   C:\Users\thoma\Documents\ENS\ARPE\Wireless-power-transfer-system_simulation\models\model.onnx   
+type               :   onnx                                                                                            
+c_name             :   network                                                                                         
+compression        :   low                                                                                             
+options            :   allocate-inputs, allocate-outputs                                                               
+optimization       :   balanced                                                                                        
+target/series      :   stm32g4                                                                                         
+workspace dir      :   C:\Users\thoma\AppData\Local\Temp\mxAI_workspace17030395583700016380648160656160811             
+output dir         :   C:\Users\thoma\.stm32cubemx\network_output                                                      
+model_fmt          :   float                                                                                           
+model_name         :   model                                                                                           
+model_hash         :   30bcdacf5b9061b1fb68bee7c8ecdd5e                                                                
+params #           :   53,762 items (210.01 KiB)                                                                       
+-----------------------------------------------------------------------------------------------------------------------
+input 1/1          :   'input' (domain:activations/**default**)                                                        
+                   :   30 items, 120 B, ai_float, float, (1,30)                                                        
+output 1/1         :   'output' (domain:activations/**default**)                                                       
+                   :   2 items, 8 B, ai_float, float, (1,2)                                                            
+macc               :   54,274                                                                                          
+weights (ro)       :   60,168 B (58.76 KiB) (1 segment) / -154,880(-72.0%) vs float model                              
+activations (rw)   :   1,024 B (1024 B) (1 segment) *                                                                  
+ram (total)        :   1,024 B (1024 B) = 1,024 + 0 + 0                                                                
+-----------------------------------------------------------------------------------------------------------------------
+(*) 'input'/'output' buffers can be used from the activations buffer
+
+Model name - model ['input'] ['output']
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+m_id   layer (type,original)                       oshape                param/size          macc             connected to   | c_size            c_macc             c_type             
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+1      linear1_weight (Placeholder, Gemm)          [h:128,h:128,c:30]    3,840/15,360                                        | -9,984(-65.0%)    +3,968(+100.0%)    dense_wc8of32[0]   
+       linear1_bias (Placeholder, Gemm)            [c:128]               128/512                                             | -512(-100.0%)                        
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+3      linear2_weight (Placeholder, Gemm)          [h:128,h:128,c:128]   16,384/65,536                                       | -47,616(-72.7%)   +16,512(+100.0%)   dense_wc8of32[2]   
+       linear2_bias (Placeholder, Gemm)            [c:128]               128/512                                             | -512(-100.0%)                        
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+5      linear3_weight (Placeholder, Gemm)          [h:128,h:128,c:128]   16,384/65,536                                       | -47,616(-72.7%)   +16,512(+100.0%)   dense_wc8of32[4]   
+       linear3_bias (Placeholder, Gemm)            [c:128]               128/512                                             | -512(-100.0%)                        
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+7      linear4_weight (Placeholder, Gemm)          [h:128,h:128,c:128]   16,384/65,536                                       | -47,616(-72.7%)   +16,512(+100.0%)   dense_wc8of32[6]   
+       linear4_bias (Placeholder, Gemm)            [c:128]               128/512                                             | -512(-100.0%)                        
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+9      linear5_weight (Placeholder, Gemm)          [h:2,h:2,c:128]       256/1,024                                           | +8(+0.8%)         +258(+100.0%)      dense_of32[o][8]   
+       linear5_bias (Placeholder, Gemm)            [c:2]                 2/8                                                 | -8(-100.0%)                          
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+0      input (Input, )                             [b:1,c:30]                                                                |                                      
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+1      _linear1_Gemm_output_0 (Gemm, Gemm)         [b:1,c:128]                              3,968                    input   |                   -3,968(-100.0%)    
+                                                                                                            linear1_weight   | 
+                                                                                                              linear1_bias   | 
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+2      _relu1_Relu_output_0 (Nonlinearity, Relu)   [b:1,c:128]                                128   _linear1_Gemm_output_0   |                                      nl_of32[1]         
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+3      _linear2_Gemm_output_0 (Gemm, Gemm)         [b:1,c:128]                             16,512     _relu1_Relu_output_0   |                   -16,512(-100.0%)   
+                                                                                                            linear2_weight   | 
+                                                                                                              linear2_bias   | 
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+4      _relu2_Relu_output_0 (Nonlinearity, Relu)   [b:1,c:128]                                128   _linear2_Gemm_output_0   |                                      nl_of32[3]         
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+5      _linear3_Gemm_output_0 (Gemm, Gemm)         [b:1,c:128]                             16,512     _relu2_Relu_output_0   |                   -16,512(-100.0%)   
+                                                                                                            linear3_weight   | 
+                                                                                                              linear3_bias   | 
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+6      _relu3_Relu_output_0 (Nonlinearity, Relu)   [b:1,c:128]                                128   _linear3_Gemm_output_0   |                                      nl_of32[5]         
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+7      _linear4_Gemm_output_0 (Gemm, Gemm)         [b:1,c:128]                             16,512     _relu3_Relu_output_0   |                   -16,512(-100.0%)   
+                                                                                                            linear4_weight   | 
+                                                                                                              linear4_bias   | 
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+8      _relu4_Relu_output_0 (Nonlinearity, Relu)   [b:1,c:128]                                128   _linear4_Gemm_output_0   |                                      nl_of32[7]         
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+9      output (Gemm, Gemm)                         [b:1,c:2]                                  258     _relu4_Relu_output_0   |                   -258(-100.0%)      
+                                                                                                            linear5_weight   | 
+                                                                                                              linear5_bias   | 
+------ ------------------------------------------- --------------------- --------------- -------- ------------------------ --- ----------------- ------------------ ------------------ 
+model/c-model: macc=54,274/54,274  weights=215,048/60,168 -154,880(-72.0%) activations=--/1,024 io=--/0
+
+
+
+Generated C-graph summary
+------------------------------------------------------------------------------------------------------------------------
+model name            : model
+c-name                : network
+c-node #              : 9
+c-array #             : 20
+activations size      : 1024 (1 segment)
+weights size          : 60168 (1 segment)
+macc                  : 54274
+inputs                : ['input_output']
+outputs               : ['output_output']
+
+C-Arrays (20)
+------ -------------------------------- ------------- ------------------------- ------------- ----------- --------- 
+c_id   name (*_array)                   item/size     domain/mem-pool           c-type        fmt         comment   
+------ -------------------------------- ------------- ------------------------- ------------- ----------- --------- 
+0      _linear2_Gemm_output_0_bias      128/512       weights/weights           const float   float32               
+1      _linear3_Gemm_output_0_weights   16384/17408   weights/weights           const float   c8 (LUT8)             
+2      _linear3_Gemm_output_0_bias      128/512       weights/weights           const float   float32               
+3      _linear4_Gemm_output_0_weights   16384/17408   weights/weights           const float   c8 (LUT8)             
+4      _linear4_Gemm_output_0_bias      128/512       weights/weights           const float   float32               
+5      output_weights                   256/1024      weights/weights           const float   float32               
+6      output_bias                      2/8           weights/weights           const float   float32               
+7      input_output                     30/120        activations/**default**   float         float32     /input    
+8      _linear1_Gemm_output_0_output    128/512       activations/**default**   float         float32               
+9      _relu1_Relu_output_0_output      128/512       activations/**default**   float         float32               
+10     _linear2_Gemm_output_0_output    128/512       activations/**default**   float         float32               
+11     _relu2_Relu_output_0_output      128/512       activations/**default**   float         float32               
+12     _linear3_Gemm_output_0_output    128/512       activations/**default**   float         float32               
+13     _relu3_Relu_output_0_output      128/512       activations/**default**   float         float32               
+14     _linear4_Gemm_output_0_output    128/512       activations/**default**   float         float32               
+15     _relu4_Relu_output_0_output      128/512       activations/**default**   float         float32               
+16     output_output                    2/8           activations/**default**   float         float32     /output   
+17     _linear1_Gemm_output_0_weights   3840/4864     weights/weights           const float   c8 (LUT8)             
+18     _linear1_Gemm_output_0_bias      128/512       weights/weights           const float   float32               
+19     _linear2_Gemm_output_0_weights   16384/17408   weights/weights           const float   c8 (LUT8)             
+------ -------------------------------- ------------- ------------------------- ------------- ----------- --------- 
+
+C-Layers (9)
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+c_id   name (*_layer)           id   layer_type   macc    rom     tensors                             shape (array id)   
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+0      _linear1_Gemm_output_0   1    dense        3968    5376    I: input_output                     (1,30) (7)         
+                                                                  W: _linear1_Gemm_output_0_weights   (30,128) (17)      
+                                                                  W: _linear1_Gemm_output_0_bias      (128,) (18)        
+                                                                  O: _linear1_Gemm_output_0_output    (1,128) (8)        
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+1      _relu1_Relu_output_0     2    nl           128     0       I: _linear1_Gemm_output_0_output    (1,128) (8)        
+                                                                  O: _relu1_Relu_output_0_output      (1,128) (9)        
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+2      _linear2_Gemm_output_0   3    dense        16512   17920   I: _relu1_Relu_output_0_output      (1,128) (9)        
+                                                                  W: _linear2_Gemm_output_0_weights   (128,128) (19)     
+                                                                  W: _linear2_Gemm_output_0_bias      (128,) (0)         
+                                                                  O: _linear2_Gemm_output_0_output    (1,128) (10)       
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+3      _relu2_Relu_output_0     4    nl           128     0       I: _linear2_Gemm_output_0_output    (1,128) (10)       
+                                                                  O: _relu2_Relu_output_0_output      (1,128) (11)       
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+4      _linear3_Gemm_output_0   5    dense        16512   17920   I: _relu2_Relu_output_0_output      (1,128) (11)       
+                                                                  W: _linear3_Gemm_output_0_weights   (128,128) (1)      
+                                                                  W: _linear3_Gemm_output_0_bias      (128,) (2)         
+                                                                  O: _linear3_Gemm_output_0_output    (1,128) (12)       
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+5      _relu3_Relu_output_0     6    nl           128     0       I: _linear3_Gemm_output_0_output    (1,128) (12)       
+                                                                  O: _relu3_Relu_output_0_output      (1,128) (13)       
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+6      _linear4_Gemm_output_0   7    dense        16512   17920   I: _relu3_Relu_output_0_output      (1,128) (13)       
+                                                                  W: _linear4_Gemm_output_0_weights   (128,128) (3)      
+                                                                  W: _linear4_Gemm_output_0_bias      (128,) (4)         
+                                                                  O: _linear4_Gemm_output_0_output    (1,128) (14)       
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+7      _relu4_Relu_output_0     8    nl           128     0       I: _linear4_Gemm_output_0_output    (1,128) (14)       
+                                                                  O: _relu4_Relu_output_0_output      (1,128) (15)       
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+8      output                   9    dense        258     1032    I: _relu4_Relu_output_0_output      (1,128) (15)       
+                                                                  W: output_weights                   (128,2) (5)        
+                                                                  W: output_bias                      (2,) (6)           
+                                                                  O: output_output                    (1,2) (16)         
+------ ------------------------ ---- ------------ ------- ------- ----------------------------------- ------------------ 
+
+
+
+Number of operations per c-layer
+------- ------ -------------------------------- -------- ---------------- -------- ---------- 
+c_id    m_id   name (type)                           #op             type   #param   sparsity 
+------- ------ -------------------------------- -------- ---------------- -------- ---------- 
+0       1      _linear1_Gemm_output_0 (dense)      3,968   smul_f32_f32c8    3,968     0.0003 
+1       2      _relu1_Relu_output_0 (nl)             128       op_f32_f32          
+2       3      _linear2_Gemm_output_0 (dense)     16,512   smul_f32_f32c8   16,512     0.0001 
+3       4      _relu2_Relu_output_0 (nl)             128       op_f32_f32          
+4       5      _linear3_Gemm_output_0 (dense)     16,512   smul_f32_f32c8   16,512     0.0001 
+5       6      _relu3_Relu_output_0 (nl)             128       op_f32_f32          
+6       7      _linear4_Gemm_output_0 (dense)     16,512   smul_f32_f32c8   16,512     0.0001 
+7       8      _relu4_Relu_output_0 (nl)             128       op_f32_f32          
+8       9      output (dense)                        258     smul_f32_f32      258     0.0000 
+------- ------ -------------------------------- -------- ---------------- -------- ---------- 
+total                                             54,274                    53,762     0.0001 
+
+Number of operation types
+---------------- -------- ----------- 
+operation type          #           % 
+---------------- -------- ----------- 
+smul_f32_f32c8     53,504       98.6% 
+op_f32_f32            512        0.9% 
+smul_f32_f32          258        0.5% 
+
+Complexity report (model)
+------ ---------------------- ------------------------- ------------------------- ------ 
+m_id   name                   c_macc                    c_rom                     c_id   
+------ ---------------------- ------------------------- ------------------------- ------ 
+1      linear1_weight         ||||               7.3%   |||||              8.9%   [0]    
+3      linear2_weight         ||||||||||||||||  30.4%   ||||||||||||||||  29.8%   [2]    
+5      linear3_weight         ||||||||||||||||  30.4%   ||||||||||||||||  29.8%   [4]    
+7      linear4_weight         ||||||||||||||||  30.4%   ||||||||||||||||  29.8%   [6]    
+9      linear5_weight         |                  0.5%   |                  1.7%   [8]    
+2      _relu1_Relu_output_0   |                  0.2%   |                  0.0%   [1]    
+4      _relu2_Relu_output_0   |                  0.2%   |                  0.0%   [3]    
+6      _relu3_Relu_output_0   |                  0.2%   |                  0.0%   [5]    
+8      _relu4_Relu_output_0   |                  0.2%   |                  0.0%   [7]    
+------ ---------------------- ------------------------- ------------------------- ------ 
+macc=54,274 weights=60,168 act=1,024 ram_io=0
+
+Generated files (7)
+------------------------------------------------------------------ 
+C:\Users\thoma\.stm32cubemx\network_output\network_config.h        
+C:\Users\thoma\.stm32cubemx\network_output\network.h               
+C:\Users\thoma\.stm32cubemx\network_output\network.c               
+C:\Users\thoma\.stm32cubemx\network_output\network_data_params.h   
+C:\Users\thoma\.stm32cubemx\network_output\network_data_params.c   
+C:\Users\thoma\.stm32cubemx\network_output\network_data.h          
+C:\Users\thoma\.stm32cubemx\network_output\network_data.c          
