@@ -66,10 +66,6 @@ void Error_Handler(void);
 #define CURRENT_SENSOR_GPIO_Port GPIOA
 #define MID_GND_Pin GPIO_PIN_1
 #define MID_GND_GPIO_Port GPIOA
-#define LPUART1_TX_Pin GPIO_PIN_2
-#define LPUART1_TX_GPIO_Port GPIOA
-#define LPUART1_RX_Pin GPIO_PIN_3
-#define LPUART1_RX_GPIO_Port GPIOA
 #define LD2_Pin GPIO_PIN_5
 #define LD2_GPIO_Port GPIOA
 #define POTENTIOMETER_Pin GPIO_PIN_0

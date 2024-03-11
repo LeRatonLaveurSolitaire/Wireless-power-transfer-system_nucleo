@@ -22,7 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include  <stdint.h>
-
+//#include "../../X-CUBE-AI/App/network.h"
 #include "../../Drivers/u8g2/u8g2.h"
 /* USER CODE END Includes */
 
@@ -33,9 +33,13 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-static int8_t PRBS();
-static uint8_t u8x8_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
-static HAL_StatusTypeDef u8x8_byte_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+#define SIG_BUFF_LEN 6018
+
+#define L1 0.000024		// Coil impedance in H
+#define R1 0.075		// Coil ESR in Ohm
+#define C1 0.000000146	// Capacitor value in F
+#define Vcc	10			// V bus voltage in volt
+#define Q 1.65/1023 /500 /0.001	// Quantization factor in ampere per step
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -61,9 +65,17 @@ uint8_t PRBS_ACTIVE = 0;
 uint16_t PRBS_period = (1 << 10) - 1;
 uint8_t BP_STATE_OLD = 0;
 uint8_t PRBS_AMPLITUDE = 20;
+uint8_t NOISE_ACTIVE = 0;
+uint8_t COMPUTE_ACTIVE = 0;
 
 static u8g2_t u8g2;
 
+volatile int16_t clean_current_sig[SIG_BUFF_LEN] = {0};
+volatile int8_t clean_voltage_sig[SIG_BUFF_LEN] = {0};
+volatile int16_t noisy_current_sig[SIG_BUFF_LEN] = {0};
+volatile int8_t noisy_voltage_sig[SIG_BUFF_LEN] = {0};
+uint16_t clean_buff_index = 0;
+uint16_t noisy_buff_index = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,6 +90,9 @@ static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
 /* USER CODE BEGIN PFP */
 
+static int8_t PRBS();
+static u8x8_msg_cb u8x8_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
+static u8x8_msg_cb u8x8_byte_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -122,19 +137,23 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
 
-  u8g2_Setup_ssd1306_i2c_128x64_noname_2(&u8g2, U8G2_R0, u8x8_byte_hw_i2c, u8x8_gpio_and_delay);  // init u8g2 structure
+  u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0,(u8x8_msg_cb) u8x8_byte_hw_i2c,(u8x8_msg_cb) u8x8_gpio_and_delay);  // init u8g2 structure
   u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
   u8g2_SetPowerSave(&u8g2, 0); // wake up display
   u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
+  u8g2_ClearDisplay(&u8g2);
   u8g2_FirstPage(&u8g2);
-  do {
-	  u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-	  u8g2_DrawStr(&u8g2, 0, 15, "Hello World!");
-	  u8g2_DrawCircle(&u8g2, 64, 40, 10, U8G2_DRAW_ALL);
-  } while (u8g2_NextPage(&u8g2));
+  u8g2_DrawStr(&u8g2, 32, 32, "Hello World!");
+  u8g2_SendBuffer(&u8g2);
+//  do {
+//	  u8g2_SetFont(&u8g2, u8g2_font_u8glib_4_tf);
+//	  u8g2_DrawStr(&u8g2, 0, 15, "Hello World!");
+//	  u8g2_SendBuffer(&u8g2);
+//	  //u8g2_DrawCircle(&u8g2, 64, 40, 10, U8G2_DRAW_ALL);
+//  } while (u8g2_NextPage(&u8g2));
 
   HAL_ADCEx_Calibration_Start(&hadc3,POTENTIOMETER_Pin);
-
+  // HAL_ADCEx_Calibration_Start(&hadc1,);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -151,13 +170,28 @@ int main(void)
 	        HAL_Delay(1);
 	      }
 
-	      if (HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) & (BP_STATE_OLD == 0)){
+	      if (HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) & !BP_STATE_OLD & !COMPUTE_ACTIVE){
 	        PRBS_ACTIVE = 1;
 	        BP_STATE_OLD = 1;
 	      }
-	      else if(!HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) & (BP_STATE_OLD == 1)){
+	      else if((!HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin)) & (BP_STATE_OLD)){
 	        // HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
 	        BP_STATE_OLD = 0;
+	      }
+	      if (COMPUTE_ACTIVE){
+	    	  int32_t clean_mean = 0;
+	    	  int32_t noisy_mean = 0;
+	    	  for(int i=0;i < SIG_BUFF_LEN;i++){
+	    		  clean_mean+=clean_current_sig[i];
+	    		  noisy_mean+=noisy_current_sig[i];
+	    	  }
+	    	  clean_mean/=SIG_BUFF_LEN;
+	    	  noisy_mean/=SIG_BUFF_LEN;
+	    	  for(int i=0;i < SIG_BUFF_LEN;i++){
+	    		  clean_current_sig[i]-=clean_mean;
+	    	  	  noisy_current_sig[i]-=noisy_mean;
+	    	  }
+	    	  COMPUTE_ACTIVE = 0;
 	      }
     /* USER CODE END WHILE */
 
@@ -474,7 +508,7 @@ static void MX_TIM1_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
@@ -506,6 +540,7 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+  HAL_TIM_MspPostInit(&htim1);
 
 }
 
@@ -627,14 +662,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LPUART1_TX_Pin LPUART1_RX_Pin */
-  GPIO_InitStruct.Pin = LPUART1_TX_Pin|LPUART1_RX_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  GPIO_InitStruct.Alternate = GPIO_AF12_LPUART1;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
   /*Configure GPIO pin : LD2_Pin */
   GPIO_InitStruct.Pin = LD2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -660,21 +687,47 @@ void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 		}
 		else htim->Instance->CCR2 = PHASE_SHIFT;
 	}
+	if (htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1){
+		if (NOISE_ACTIVE){
+			noisy_voltage_sig[noisy_buff_index] = 1;
+			noisy_buff_index++;
+		}
+		else{
+			clean_voltage_sig[clean_buff_index] = 1;
+			clean_buff_index++;
+		}
+	}
 }
 
 
 int8_t PRBS(){
   static uint16_t current_val = 1;
   static uint16_t counter = 0;
-	current_val = ((current_val << 1) | (((current_val >> 9) ^ (current_val >> 6)) & 0x1)) & 0x3FF;
-	if (counter == 4*PRBS_period){
-    counter = 0;
-		PRBS_ACTIVE = 0;
-    HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-	}
+  current_val = ((current_val << 1) | (((current_val >> 9) ^ (current_val >> 6)) & 0x1)) & 0x3FF;
   counter +=1;
+
+  if (counter == 1*PRBS_period-2){
+      HAL_TIM_Base_Start(&htim1);
+      // HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_1);
+      HAL_TIM_OC_Start_IT(&htim1,TIM_CHANNEL_1);
+      HAL_ADC_Start_DMA(&hadc1,(int16_t *) clean_current_sig ,SIG_BUFF_LEN);
+    }
   if (counter == 2*PRBS_period){
     HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
+    NOISE_ACTIVE =1;
+  }
+  if (counter == 3*PRBS_period-2){
+      HAL_TIM_Base_Start(&htim1);
+      // HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_1);
+      HAL_TIM_OC_Start_IT(&htim1,TIM_CHANNEL_1);
+      HAL_ADC_Start_DMA(&hadc1,(int16_t *) noisy_current_sig ,SIG_BUFF_LEN);
+    }
+  if (counter == 4*PRBS_period){
+		counter = 0;
+		PRBS_ACTIVE = 0;
+		NOISE_ACTIVE = 0;
+		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
+		COMPUTE_ACTIVE =1;
   }
 
   if (counter < 2*PRBS_period){
@@ -686,13 +739,22 @@ int8_t PRBS(){
 
 }
 
-
-uint8_t u8x8_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
-{
-  return 1;
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	HAL_ADC_Stop_DMA(&hadc1);
+	// HAL_TIM_OC_Stop(&htim1,TIM_CHANNEL_1);
+	HAL_TIM_OC_Stop_IT(&htim1,TIM_CHANNEL_1);
+	HAL_TIM_Base_Stop(&htim1);
+	clean_buff_index = 0;
+	noisy_buff_index = 0;
 }
 
-uint8_t u8x8_byte_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
+
+u8x8_msg_cb u8x8_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+{
+  return (u8x8_msg_cb)1;
+}
+
+u8x8_msg_cb u8x8_byte_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr) {
   static uint8_t buffer[32];  // Buffer for data (max 32 bytes)
   static uint8_t buf_idx;    // Index for buffer position
   uint8_t *data;
@@ -709,7 +771,7 @@ uint8_t u8x8_byte_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_p
 
       HAL_StatusTypeDef  status = HAL_I2C_Master_Transmit(&hi2c1, device_address, buffer, buf_idx, 100);
 
-      return (status == HAL_OK);  // Return success (1) or error (0)
+      return (u8x8_msg_cb)(status == HAL_OK);  // Return success (1) or error (0)
 
     case U8X8_MSG_BYTE_INIT:
       break;
@@ -730,7 +792,7 @@ uint8_t u8x8_byte_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_p
       return 0;
   }
 
-  return 1;
+  return (u8x8_msg_cb)1;
 }
 
 /* USER CODE END 4 */
