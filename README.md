@@ -17,9 +17,10 @@ ADC 1 is used in diff mode with DMA1 to mesure the current flowing through the i
 ADC 2 is used in diff mode with DMA2 to mesure the voltage at the output of the inverter during the noise injection.
 Timer 1 is set to sample the current at 1MHz. 
 
+Once recorded and processed, the data are transfered through UART.
+
 ## TODO :
 
-* Configure UART communication to send data to PC
 * Configure I2C communication to print data on OLED display
 * Implement frequency response extraction
 * Test frequency response extraction

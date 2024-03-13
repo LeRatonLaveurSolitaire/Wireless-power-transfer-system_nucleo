@@ -62,6 +62,8 @@ DMA_HandleTypeDef hdma_i2c1_tx;
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
+UART_HandleTypeDef huart2;
+
 /* USER CODE BEGIN PV */
 uint16_t PHASE_SHIFT = 0;
 uint8_t PRBS_ACTIVE = 0;
@@ -75,7 +77,7 @@ static u8g2_t u8g2;
 
 
 volatile int16_t clean_current_sig[SIG_BUFF_LEN] = {0};
-volatile int16_t clean_voltage_sig[SIG_BUFF_LEN] = {0};
+// volatile int16_t clean_voltage_sig[SIG_BUFF_LEN] = {0};
 
 volatile int16_t noisy_current_sig[SIG_BUFF_LEN] = {0};
 volatile int16_t noisy_voltage_sig[SIG_BUFF_LEN] = {0};
@@ -92,6 +94,7 @@ static void MX_CRC_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC2_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 static int8_t PRBS();
@@ -140,6 +143,7 @@ int main(void)
   MX_ADC3_Init();
   MX_TIM1_Init();
   MX_ADC2_Init();
+  MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
 	//  u8g2_Setup_ssd1306_i2c_128x64_noname_f(&u8g2, U8G2_R0,(u8x8_msg_cb) u8x8_byte_hw_i2c,(u8x8_msg_cb) u8x8_gpio_and_delay);  // init u8g2 structure
@@ -165,6 +169,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
 	while (1)
 	{
+		// State machine to control the identification prcedure
 		if (!PRBS_ACTIVE){
 			HAL_ADC_Start(&hadc3);
 			// Poll ADC1 Perihperal & TimeOut = 1mSec
@@ -193,15 +198,15 @@ int main(void)
 				clean_mean+=clean_current_sig[i];
 				noisy_mean+=noisy_current_sig[i];
 
-				if (clean_voltage_sig[i] < low_threshold){
-					clean_voltage_sig[i]= -Vcc;
-				}
-				else if (clean_voltage_sig[i] > high_threshold){
-					clean_voltage_sig[i]= Vcc;
-				}
-				else{
-					clean_voltage_sig[i]= 0;
-				}
+//				if (clean_voltage_sig[i] < low_threshold){
+//					clean_voltage_sig[i]= -Vcc;
+//				}
+//				else if (clean_voltage_sig[i] > high_threshold){
+//					clean_voltage_sig[i]= Vcc;
+//				}
+//				else{
+//					clean_voltage_sig[i]= 0;
+//				}
 
 				if (noisy_voltage_sig[i] < low_threshold){
 					noisy_voltage_sig[i]= -Vcc;
@@ -219,7 +224,13 @@ int main(void)
 				clean_current_sig[i]-=clean_mean;
 				noisy_current_sig[i]-=noisy_mean;
 			}
-
+			char message[50];
+			sprintf(message, "index,cc,nc,nv\n");
+			HAL_UART_Transmit(&huart2, message, strlen(message), 100);
+			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
+				sprintf(message, "%d,%d,%d,%d\n",i,clean_current_sig[i],noisy_current_sig[i],noisy_voltage_sig[i]);
+				HAL_UART_Transmit(&huart2, message, strlen(message), 100);
+			}
 
 			COMPUTE_ACTIVE = 0;
 		}
@@ -705,6 +716,54 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart2, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart2, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -792,7 +851,7 @@ int8_t PRBS(){
 		HAL_TIM_Base_Start(&htim1);
 		HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_1);
 		HAL_ADC_Start_DMA(&hadc1,(int16_t *) clean_current_sig ,SIG_BUFF_LEN);
-		HAL_ADC_Start_DMA(&hadc2,(int16_t *) clean_voltage_sig ,SIG_BUFF_LEN);
+		// HAL_ADC_Start_DMA(&hadc2,(int16_t *) clean_voltage_sig ,SIG_BUFF_LEN);
 	}
 	if (counter == 2*PRBS_period){
 		HAL_TIM_OC_Stop(&htim1,TIM_CHANNEL_1);
