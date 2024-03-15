@@ -22,8 +22,6 @@ Once recorded and processed, the data are transfered through UART.
 ## TODO :
 
 * Configure I2C communication to print data on OLED display
-* Implement frequency response extraction
-* Test frequency response extraction
 * Implement the neural network estimator
 * Test the neural network estimator 
 * Test the full identification 

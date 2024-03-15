@@ -1,6 +1,6 @@
 Neural Network Tools for STM32 family v1.7.0 (stm.ai v8.1.0-19520)
-Created date          : 2024-03-13 12:02:10
-Parameters            : generate --name network -m C:/Users/thoma/Documents/ENS/ARPE/Wireless-power-transfer-system_simulation/models/model.onnx --type onnx --compression low --verbosity 1 --workspace C:\Users\thoma\AppData\Local\Temp\mxAI_workspace4867752662246004064446798341485667 --output C:\Users\thoma\.stm32cubemx\network_output --allocate-inputs --series stm32g4 --allocate-outputs
+Created date          : 2024-03-13 21:28:29
+Parameters            : generate --name network -m C:/Users/thoma/Documents/ENS/ARPE/Wireless-power-transfer-system_simulation/models/model.onnx --type onnx --compression low --verbosity 1 --workspace C:\Users\thoma\AppData\Local\Temp\mxAI_workspace520774268793300548904423821318074 --output C:\Users\thoma\.stm32cubemx\network_output --allocate-inputs --series stm32g4 --allocate-outputs
 
 Exec/report summary (generate)
 -----------------------------------------------------------------------------------------------------------------------
@@ -11,7 +11,7 @@ compression        :   low
 options            :   allocate-inputs, allocate-outputs                                                               
 optimization       :   balanced                                                                                        
 target/series      :   stm32g4                                                                                         
-workspace dir      :   C:\Users\thoma\AppData\Local\Temp\mxAI_workspace4867752662246004064446798341485667              
+workspace dir      :   C:\Users\thoma\AppData\Local\Temp\mxAI_workspace520774268793300548904423821318074               
 output dir         :   C:\Users\thoma\.stm32cubemx\network_output                                                      
 model_fmt          :   float                                                                                           
 model_name         :   model                                                                                           

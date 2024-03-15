@@ -57,10 +57,10 @@ def fractional_decade_smoothing_impedance(
 
 
 def extract_impedance(
-    clean_current: list = None,
     noisy_current: list = None,
     noisy_voltage: list = None,
     sampling_period: float = None,
+    tau: float = None,
 ) -> tuple :
     """Extract the system impedance using the combination of spectral substraction (Gain) and simple impedance computation (Phase).
 
@@ -68,29 +68,27 @@ def extract_impedance(
         clean_current (list): clean current. Defaults to None.
         noisy_current (list): currrent with PRBS injection. Defaults to None.
         noisy_voltage (list): voltage with PRBS injection. Defaults to None.
-        sampling_period (float): sampling period of the signals
+        sampling_period (float): The delay between the signals, used for phase correction
+        tau (float): The delay between the signals, used for phase correction. Defaults to None.
     """
-    clean_fft_current = np.fft.rfft(clean_current)
     noisy_fft_current = np.fft.rfft(noisy_current)
     noisy_fft_voltage = np.fft.rfft(noisy_voltage)
     sys_frequencies = np.fft.rfftfreq(
-        n=len(clean_current),
+        n=len(noisy_current),
         d=sampling_period,
     )
-    #for i in range(20):
-    #    print(f"{clean_fft_current[i]}\t{noisy_fft_current[i]}\t{noisy_fft_voltage[i]}")
 
-    gain_fft = 300 / (noisy_fft_current - clean_fft_current)
-    phase_fft = noisy_fft_voltage / noisy_fft_current
+    system_impedance = noisy_fft_voltage / noisy_fft_current
+
 
     system_impedance = np.array(
         [
-            np.absolute(gain_fft[i]) * np.exp(1j * np.angle(phase_fft[i]) - 1j * np.pi * 2 * sys_frequencies[i] * sampling_period)
-            for i in range(len(gain_fft))
+            system_impedance[i]*np.exp(- 1j * np.pi * 2 * sys_frequencies[i] * tau + 1j*np.pi)
+            for i in range(len(system_impedance))
         ]
     )
-
-    return system_impedance[1:],sys_frequencies[1:]
+    
+    return system_impedance[1:],sys_frequencies[1:] # [1:] is used to remove the 0Hz to avoid division by 0
 
 
 def nn_input_tensor(
