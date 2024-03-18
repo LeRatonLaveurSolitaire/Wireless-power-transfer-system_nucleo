@@ -55,7 +55,7 @@ def plot_bode(impedances:list, frequencies:np.array, names:list = None, forms:li
     plt.ylabel('Magnitude (dB)')
     plt.legend()
     plt.grid()
-    # plt.xlim(min_freq, max_freq)
+    plt.xlim(min_freq, max_freq)
 
     # Phase plot
     plt.subplot(2, 1, 2)
@@ -71,6 +71,6 @@ def plot_bode(impedances:list, frequencies:np.array, names:list = None, forms:li
     plt.ylabel('Phase (degrees)')
     plt.legend()
     plt.grid()
-    # plt.xlim(min_freq, max_freq)
+    plt.xlim(min_freq, max_freq)
 
     plt.show()

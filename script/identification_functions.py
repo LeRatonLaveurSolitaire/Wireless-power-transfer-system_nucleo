@@ -2,20 +2,21 @@
 Usefull functions of the identification technique.
 Enable the creation of the tensor from the raw signals.
 """
+
 import numpy as np
 from torch import tensor
 import torch
 import os
 
-os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 
-def delinearise_R_l(R_l: float = 0) -> float :
+def delinearise_R_l(R_l: float = 0) -> float:
     """Recover R from the output data of the NN."""
     return 10 ** (R_l * 0.1)
 
 
-def delinearise_M(M: float = 0) -> float :
+def delinearise_M(M: float = 0) -> float:
     """Recover M from the output data of the NN."""
     L1 = 24e-6
     L2 = 24e-6
@@ -26,7 +27,7 @@ def fractional_decade_smoothing_impedance(
     impedances: np.array = None,
     frequencies: np.array = None,
     fractional_factor: int = None,
-) -> np.array :
+) -> np.array:
     """Fractional decade smoothing.
 
     Args:
@@ -61,7 +62,7 @@ def extract_impedance(
     noisy_voltage: list = None,
     sampling_period: float = None,
     tau: float = None,
-) -> tuple :
+) -> tuple:
     """Extract the system impedance using the combination of spectral substraction (Gain) and simple impedance computation (Phase).
 
     Args:
@@ -80,15 +81,18 @@ def extract_impedance(
 
     system_impedance = noisy_fft_voltage / noisy_fft_current
 
-
     system_impedance = np.array(
         [
-            system_impedance[i]*np.exp(- 1j * np.pi * 2 * sys_frequencies[i] * tau + 1j*np.pi)
+            system_impedance[i]
+            * np.exp(-1j * np.pi * 2 * sys_frequencies[i] * tau + 1j * np.pi)
             for i in range(len(system_impedance))
         ]
     )
-    
-    return system_impedance[1:],sys_frequencies[1:] # [1:] is used to remove the 0Hz to avoid division by 0
+
+    return (
+        system_impedance[1:],
+        sys_frequencies[1:],
+    )  # [1:] is used to remove the 0Hz to avoid division by 0
 
 
 def nn_input_tensor(
@@ -97,7 +101,7 @@ def nn_input_tensor(
     L1: float = None,
     C1: float = None,
     R1: float = None,
-) -> tensor :
+) -> tensor:
     """Create the input_tensor from the computed impedance
 
     Args:
@@ -112,7 +116,7 @@ def nn_input_tensor(
 
     wanted_frequencies = np.geomspace(50000, 144500, num=15, dtype=np.int64)
 
-    output_tensor = []
+    input_tensor = []
 
     for i, frequency in enumerate(wanted_frequencies):
         index = np.argmin(
@@ -126,11 +130,10 @@ def nn_input_tensor(
             1j * 2 * np.pi * frequency * L1 + R1 + 1 / (2 * np.pi * frequency * 1j * C1)
         )
         Z2 = Z_estim - Z1
-        output_tensor.append(np.absolute(Z2))
-        output_tensor.append(np.angle(Z2))
+        input_tensor.append(np.absolute(Z2))
+        input_tensor.append(np.angle(Z2))
 
-    return tensor(output_tensor, dtype=torch.float32)
-
+    return tensor(input_tensor, dtype=torch.float32)
 
 
 def pretty_print(
@@ -138,7 +141,7 @@ def pretty_print(
     real_m: float = None,
     estim_r: float = None,
     estim_m: float = None,
-) -> None :
+) -> None:
     print("|" + "-" * 37 + "|")
     print("| Parameter | Real value | Estimation |")
     print("|" + "-" * 11 + "|" + "-" * 12 + "|" + "-" * 12 + "|")
