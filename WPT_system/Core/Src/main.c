@@ -45,9 +45,10 @@
 #define TAU 0.000006 				// Time delay impacting the phase (6e-6 in this case)
 #define Te 0.000001					// Sampling period
 #define smoothing_factor 1.04		// Filter coefficient
-#define L1 0.000024					// Coil impedance in H
+#define L1 0.000024					// Primary coil impedance in H
 #define R1 0.075					// Coil ESR in Ohm
 #define C1 0.000000146				// Capacitor value in F
+#define SQRT_L1L2_uH 24					// Primary coil impedance in H
 #define Vcc	10						// V bus voltage in volt
 #define Q 1.65/1023 /500 /0.001		// Quantization factor in ampere per step
 
@@ -88,6 +89,9 @@ volatile uint8_t COMPUTE_ACTIVE = 0;
 
 int16_t* noisy_current_sig;
 int16_t* noisy_voltage_sig;
+
+volatile uint8_t filtering_low_index_list[FFT_BUFF_LEN -1];
+volatile uint8_t filtering_high_index_list[FFT_BUFF_LEN -1];
 
 uint16_t index_list[] = {199,215,232,250,270,291,314,339,366,395,426,459,496,535,577};
 kiss_fft_cpx input_tensor[15];
@@ -142,6 +146,8 @@ float_t ang_cpx(kiss_fft_cpx);
 int aiInit(void);
 int aiRun(const void *in_data, void *out_data);
 
+float_t delinearize_R(float_t);
+float_t delinearize_M(float_t);
 
 u8x8_msg_cb u8x8_stm32_gpio_and_delay(u8x8_t *, uint8_t , uint8_t , void *);
 u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *, uint8_t , uint8_t , void *);
@@ -201,19 +207,44 @@ int main(void)
 	aiInit();
 
 	u8g2_Setup_ssd1306_i2c_128x64_noname_1(&u8g2, U8G2_R2,(u8x8_msg_cb) u8x8_byte_stm32_hw_i2c,(u8x8_msg_cb) u8x8_stm32_gpio_and_delay);  // init u8g2 structure
-		u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
-		u8g2_SetPowerSave(&u8g2, 0); // wake up display
-		u8g2_ClearDisplay(&u8g2);
-		u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-		do {
-			u8g2_DrawStr(&u8g2,6,60, "Press USER to start");
-			u8g2_DrawFrame(&u8g2,50 -12, 15 - 12, 25,25);
-			u8g2_DrawCircle(&u8g2, 50, 15, 8, U8G2_DRAW_ALL);
-			u8g2_DrawLine(&u8g2, 68,15,95,15);
-			u8g2_DrawLine(&u8g2, 68,15,78,10);
-			u8g2_DrawLine(&u8g2, 68,15,78,20);
-			u8g2_DrawStr(&u8g2,39,40, "USER");
-		} while (u8g2_NextPage(&u8g2));
+	u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
+	u8g2_SetPowerSave(&u8g2, 0); // wake up display
+	u8g2_ClearDisplay(&u8g2);
+	u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+	do {
+		u8g2_DrawStr(&u8g2,6,60, "Press USER to start");
+		u8g2_DrawFrame(&u8g2,50 -12, 15 - 12, 25,25);
+		u8g2_DrawCircle(&u8g2, 50, 15, 8, U8G2_DRAW_ALL);
+		u8g2_DrawLine(&u8g2, 68,15,95,15);
+		u8g2_DrawLine(&u8g2, 68,15,78,10);
+		u8g2_DrawLine(&u8g2, 68,15,78,20);
+		u8g2_DrawStr(&u8g2,39,40, "USER");
+	} while (u8g2_NextPage(&u8g2));
+
+	for (uint16_t i = 1; i < FFT_BUFF_LEN; i++) {
+		uint32_t low_bound = i;
+		uint32_t high_bound = i;
+
+
+		float_t current_freq = (i) / (2 * Te * (FFT_BUFF_LEN - 1));
+
+		while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
+		(current_freq / smoothing_factor)) &&
+				(low_bound > 0)) {
+			low_bound--;
+		}
+		low_bound++;
+
+		while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
+				(current_freq * smoothing_factor)) &&
+				(high_bound < FFT_BUFF_LEN)) {
+			high_bound++;
+		}
+		high_bound--;
+
+		filtering_low_index_list[i-1] = i - low_bound;
+		filtering_high_index_list[i-1] = high_bound - i;
+	}
 
 	/* USER CODE END 2 */
 
@@ -268,14 +299,14 @@ int main(void)
 			}
 
 			/* 			Send the signals via UART		*/
-
-			char message[100];
-			sprintf(message, "index,nc,nv\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
-				sprintf(message, "%d,%d,%d\n",i,noisy_current_sig[i],noisy_voltage_sig[i]);
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-			}
+//
+//			char message[100];
+//			sprintf(message, "index,nc,nv\n");
+//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
+//				sprintf(message, "%d,%d,%d\n",i,noisy_current_sig[i],noisy_voltage_sig[i]);
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//			}
 
 			/*		Transform signals into float32		*/
 
@@ -332,13 +363,13 @@ int main(void)
 
 			/* 			Send the FFT signals via UART		*/
 
-//			HAL_Delay(500);
-//			sprintf(message, "index,cr,ci,vr,vi\n");
-//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-//			for(uint16_t i = 0; i <FFT_BUFF_LEN; i++){
-//				sprintf(message, "%d,%f,%f,%f,%f\n",i,noisy_current_fft[i].r,noisy_current_fft[i].i,noisy_voltage_fft[i].r,noisy_voltage_fft[i].i);
-//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//			}
+			//			HAL_Delay(500);
+			//			sprintf(message, "index,cr,ci,vr,vi\n");
+			//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+			//			for(uint16_t i = 0; i <FFT_BUFF_LEN; i++){
+			//				sprintf(message, "%d,%f,%f,%f,%f\n",i,noisy_current_fft[i].r,noisy_current_fft[i].i,noisy_voltage_fft[i].r,noisy_voltage_fft[i].i);
+			//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+			//			}
 
 			/* 			Computing of the raw impedance			*/
 
@@ -363,7 +394,6 @@ int main(void)
 
 			/* 			Smoothing of the impedance			*/
 
-			kiss_fft_cpx * smooth_sys_impedance = (kiss_fft_cpx *) malloc((FFT_BUFF_LEN-1) * sizeof(kiss_fft_cpx));
 
 			float_t *amplitudes = (float_t *) malloc((FFT_BUFF_LEN) * sizeof(float_t));
 			float_t *phases = (float_t *) malloc((FFT_BUFF_LEN) * sizeof(float_t));
@@ -376,30 +406,29 @@ int main(void)
 				phases[i] = phases[i-1] + ang_cpx(sys_impedance[i-1]);
 			}
 
-			free(sys_impedance);
-
 			float_t phase_offset = 0;
 			uint16_t nbr_of_phases_added = 0;
 
 			for (uint16_t i = 1; i < FFT_BUFF_LEN; i++) {
-				uint32_t low_bound = i;
-				uint32_t high_bound = i;
+				uint32_t low_bound = i - filtering_low_index_list[i-1];
+				uint32_t high_bound = i + filtering_high_index_list[i-1];
 
 				float_t current_freq = (i) / (2 * Te * (FFT_BUFF_LEN - 1));
 
-				while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
-				(current_freq / smoothing_factor)) &&
-						(low_bound > 0)) {
-					low_bound--;
-				}
-				low_bound++;
-
-				while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
-						(current_freq * smoothing_factor)) &&
-						(high_bound < FFT_BUFF_LEN-1)) {
-					high_bound++;
-				}
-				high_bound--;
+				//
+				//				while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
+				//				(current_freq / smoothing_factor)) &&
+				//						(low_bound > 0)) {
+				//					low_bound--;
+				//				}
+				//				low_bound++;
+				//
+				//				while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
+				//						(current_freq * smoothing_factor)) &&
+				//						(high_bound < FFT_BUFF_LEN-1)) {
+				//					high_bound++;
+				//				}
+				//				high_bound--;
 
 				float_t amplitude = 0;
 				float_t phase = 0;
@@ -410,8 +439,8 @@ int main(void)
 				amplitude /= (high_bound - low_bound + 1);
 				phase /= (high_bound - low_bound + 1);
 
-				smooth_sys_impedance[i-1].r = amplitude*cos(phase);
-				smooth_sys_impedance[i-1].i = amplitude*sin(phase);
+				sys_impedance[i-1].r = amplitude*cos(phase);
+				sys_impedance[i-1].i = amplitude*sin(phase);
 
 				if (current_freq > 75000 && current_freq < 95000){ // Used to center the phase plot in the 75kHz to 95kHz region
 					phase_offset -= phase;
@@ -431,46 +460,60 @@ int main(void)
 				kiss_fft_cpx phase_correction;
 				phase_correction.r = cos(phase_offset);
 				phase_correction.i = sin(phase_offset);
-				smooth_sys_impedance[i] = mul_cpx(smooth_sys_impedance[i],phase_correction);
+				sys_impedance[i] = mul_cpx(sys_impedance[i],phase_correction);
 			}
 
 
 			/* 			Send the smoothed impedance via UART		*/
 
-			HAL_Delay(500);
-			sprintf(message, "index,impedance_r,impedance_i\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
-				sprintf(message, "%d,%f,%f\n",i,smooth_sys_impedance[i].r,smooth_sys_impedance[i].i);
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-			}
+//			HAL_Delay(500);
+//			sprintf(message, "index,impedance_r,impedance_i\n");
+//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
+//				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//			}
 
 			/* 				Compute the input tensor				*/
 
 			for(uint8_t i = 0; i < 15; i++){
 				float_t freq = (index_list[i]+1) / (2 * Te * (FFT_BUFF_LEN - 1));
-				input_tensor[i].r = smooth_sys_impedance[index_list[i]].r - R1;
-				input_tensor[i].i = smooth_sys_impedance[index_list[i]].i - PI*2*freq*L1 + 1/(2*PI*freq*C1);
+				input_tensor[i].r = sys_impedance[index_list[i]].r - R1;
+				input_tensor[i].i = sys_impedance[index_list[i]].i - PI*2*freq*L1 + 1/(2*PI*freq*C1);
 			}
 
-			free(smooth_sys_impedance);
+			free(sys_impedance);
 
-			/* 			Send the input tensor via UART		*/
+			/* 			Send the input tensor via UART				*/
 
-			HAL_Delay(500);
-			sprintf(message, "index,value\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <15; i++){
-				sprintf(message, "%d,%f\n",i*2,mag_cpx(input_tensor[i]));
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-				sprintf(message, "%d,%f\n",i*2+1,ang_cpx(input_tensor[i]));
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//			HAL_Delay(500);
+//			sprintf(message, "index,value\n");
+//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//			for(uint16_t i = 0; i <15; i++){
+//				sprintf(message, "%d,%f\n",i*2,mag_cpx(input_tensor[i]));
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//				sprintf(message, "%d,%f\n",i*2+1,ang_cpx(input_tensor[i]));
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//
+//			}
 
-			}
+
+			/* 			Compute neural network inference			*/
+
 			for(uint16_t i = 0; i <15; i++){
 				in_data[i*2] = mag_cpx(input_tensor[i]);
 				in_data[i*2+1] = ang_cpx(input_tensor[i]);
 			}
+
+			aiRun(in_data,out_data);
+
+			float_t R_lin = out_data[0];
+			float_t M_lin = out_data[1];
+
+			float_t R = delinearize_R(R_lin);
+			float_t M = delinearize_M(M_lin);
+
+			display_oled(R,M);
 
 			COMPUTE_ACTIVE = 0;
 		}
@@ -1160,35 +1203,47 @@ float_t ang_cpx(kiss_fft_cpx c) {
 }
 
 int aiInit(void) {
-  ai_error err;
+	ai_error err;
 
-  /* Create and initialize the c-model */
-  const ai_handle acts[] = { activations };
-  err = ai_network_create_and_init(&network, acts, NULL);
-  if (err.type != AI_ERROR_NONE) { Error_Handler(); }
+	/* Create and initialize the c-model */
+	const ai_handle acts[] = { activations };
+	err = ai_network_create_and_init(&network, acts, NULL);
+	if (err.type != AI_ERROR_NONE) { Error_Handler(); }
 
-  /* Reteive pointers to the model's input/output tensors */
-  ai_input = ai_network_inputs_get(network, NULL);
-  ai_output = ai_network_outputs_get(network, NULL);
+	/* Reteive pointers to the model's input/output tensors */
+	ai_input = ai_network_inputs_get(network, NULL);
+	ai_output = ai_network_outputs_get(network, NULL);
 
-  return 0;
+	return 0;
 }
 
 int aiRun(const void *in_data, void *out_data) {
-  ai_i32 n_batch;
-  ai_error err;
+	ai_i32 n_batch;
+	ai_error err;
 
-  /* 1 - Update IO handlers with the data payload */
-  ai_input[0].data = AI_HANDLE_PTR(in_data);
-  ai_output[0].data = AI_HANDLE_PTR(out_data);
+	/* 1 - Update IO handlers with the data payload */
+	ai_input[0].data = AI_HANDLE_PTR(in_data);
+	ai_output[0].data = AI_HANDLE_PTR(out_data);
 
-  /* 2 - Perform the inference */
-  n_batch = ai_network_run(network, &ai_input[0], &ai_output[0]);
-  if (n_batch != 1) {
-      err = ai_network_get_error(network);
-  };
+	/* 2 - Perform the inference */
+	n_batch = ai_network_run(network, &ai_input[0], &ai_output[0]);
+	if (n_batch != 1) {
+		err = ai_network_get_error(network);
+		return err.code;
+	};
 
-  return 0;
+	return 0;
+}
+
+float_t delinearize_R(float_t R_lin){
+	float_t R = pow(10,R_lin*0.1);
+	return R;
+
+}
+
+float_t delinearize_M(float_t M_lin){
+	float_t M = pow(10,(M_lin * 0.1)) * (0.1 * SQRT_L1L2_uH);
+	return M;
 }
 
 
@@ -1252,12 +1307,14 @@ void display_oled(float_t R, float_t M){
 	sprintf(line_1, "R_l : %.2f Ohm", R);
 	sprintf(line_2, "M   : %.2f uH", M);
 	u8g2_ClearDisplay(&u8g2);
-	u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
+
 	do {
+		u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
 		u8g2_DrawStr(&u8g2,0,10, "Estimation :");
 		u8g2_DrawStr(&u8g2,0,32 - 6,line_1);
 		u8g2_DrawStr(&u8g2,0,48 - 6, line_2);
-		u8g2_DrawStr(&u8g2,0,60, "NN Param Estimator");
+		u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+		u8g2_DrawStr(&u8g2,0,60, "Press USER to restart");
 
 	} while (u8g2_NextPage(&u8g2));
 }

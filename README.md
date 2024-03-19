@@ -17,10 +17,5 @@ ADC 1 is used in diff mode with DMA1 to mesure the current flowing through the i
 ADC 2 is used in diff mode with DMA2 to mesure the voltage at the output of the inverter during the noise injection.
 Timer 1 is set to sample the current at 1MHz. 
 
-Once recorded and processed, the data are transfered through UART.
+Once recorded and processed, the estimated parameters are printed on the Oled Display
 
-## TODO :
-
-* Implement the neural network estimator
-* Test the neural network estimator 
-* Test the full identification 
