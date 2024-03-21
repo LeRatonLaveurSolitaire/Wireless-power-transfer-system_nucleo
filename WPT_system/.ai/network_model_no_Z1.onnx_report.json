@@ -1,7 +1,7 @@
 {
     "_allocate_inputs": 4,
     "_allocate_outputs": 4,
-    "cli_parameters": "generate --name network -m C:/Users/thoma/Documents/GitHub/Wireless-power-transfer-system_nucleo/model.onnx --type onnx --compression none --verbosity 1 --workspace C:\\Users\\thoma\\AppData\\Local\\Temp\\mxAI_workspace1423948067254002259425712974379493 --output C:\\Users\\thoma\\.stm32cubemx\\network_output --allocate-inputs --series stm32g4 --allocate-outputs",
+    "cli_parameters": "generate --name network -m C:/Users/thoma/Documents/GitHub/Wireless-power-transfer-system_nucleo/model_no_Z1.onnx --type onnx --compression none --verbosity 1 --workspace C:\\Users\\thoma\\AppData\\Local\\Temp\\mxAI_workspace14436828619480015154314435411974919 --output C:\\Users\\thoma\\.stm32cubemx\\network_output --allocate-inputs --series stm32g4 --allocate-outputs",
     "cli_version": {
         "major": 1,
         "micro": 0,
@@ -13,12 +13,12 @@
         "factor": null,
         "layers": {}
     },
-    "date_time": "Thu Mar 21 12:14:36 2024",
+    "date_time": "Thu Mar 21 12:47:27 2024",
     "error": 0,
     "error_str": [],
     "exec_cmd": "generate",
     "exec_duration": 0.0,
-    "hash": "77d8212f3884d53b0397dff92a2a9da4",
+    "hash": "7290c01f46ceea4090326d262d6e08a0",
     "inputs": [
         "input"
     ],
@@ -451,10 +451,10 @@
         }
     ],
     "model_files": [
-        "C:\\Users\\thoma\\Documents\\GitHub\\Wireless-power-transfer-system_nucleo\\model.onnx"
+        "C:\\Users\\thoma\\Documents\\GitHub\\Wireless-power-transfer-system_nucleo\\model_no_Z1.onnx"
     ],
     "model_n_params": 53762,
-    "model_name": "model",
+    "model_name": "model_no_Z1",
     "model_size": 215048,
     "model_type": "onnx",
     "name": "network",

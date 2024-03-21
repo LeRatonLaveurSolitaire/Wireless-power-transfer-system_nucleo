@@ -356,7 +356,7 @@ STMicroelectronics.X-CUBE-AI.8.1.0.ModelMacc-3ebb29efe24455d08ac401c08bdaad620ac
 STMicroelectronics.X-CUBE-AI.8.1.0.ModelName-3ebb29efe24455d08ac401c08bdaad620ac2d7e26c9eb38f09bf857264b2c358=network
 STMicroelectronics.X-CUBE-AI.8.1.0.ModelNameList=network
 STMicroelectronics.X-CUBE-AI.8.1.0.ModelRamOccupation-3ebb29efe24455d08ac401c08bdaad620ac2d7e26c9eb38f09bf857264b2c358=3828
-STMicroelectronics.X-CUBE-AI.8.1.0.ModelStructureFile-3ebb29efe24455d08ac401c08bdaad620ac2d7e26c9eb38f09bf857264b2c358=C\:\\Users\\thoma\\Documents\\GitHub\\Wireless-power-transfer-system_nucleo\\model.onnx
+STMicroelectronics.X-CUBE-AI.8.1.0.ModelStructureFile-3ebb29efe24455d08ac401c08bdaad620ac2d7e26c9eb38f09bf857264b2c358=C\:\\Users\\thoma\\Documents\\GitHub\\Wireless-power-transfer-system_nucleo\\model_no_Z1.onnx
 STMicroelectronics.X-CUBE-AI.8.1.0.ModelType-3ebb29efe24455d08ac401c08bdaad620ac2d7e26c9eb38f09bf857264b2c358=Saved model
 STMicroelectronics.X-CUBE-AI.8.1.0.ReadyForCodeGeneration=true
 STMicroelectronics.X-CUBE-AI.8.1.0.StackSize=0x800

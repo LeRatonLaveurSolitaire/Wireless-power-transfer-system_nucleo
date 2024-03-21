@@ -2,9 +2,9 @@ import torch
 from nn_model import NN_model
 
 
-onnx_model_path = "model.onnx"
+onnx_model_path = "model_no_Z1.onnx"
 
-model_path = "script/most_accurate_model.pt"
+model_path = "script/model_noise.pt"
 
 
 print("Loading model...")

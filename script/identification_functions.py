@@ -129,7 +129,7 @@ def nn_input_tensor(
         Z1 = (
             1j * 2 * np.pi * frequency * L1 + R1 + 1 / (2 * np.pi * frequency * 1j * C1)
         )
-        Z2 = Z_estim - Z1
+        Z2 = Z_estim  # - Z1
         input_tensor.append(np.absolute(Z2))
         input_tensor.append(np.angle(Z2))
 

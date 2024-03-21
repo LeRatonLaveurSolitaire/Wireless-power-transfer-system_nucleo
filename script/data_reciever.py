@@ -24,7 +24,7 @@ C1 = 146e-9  # 1 / ((2 * np.pi * 85_000) ** 2 * L1)
 R1 = 0.075
 
 # Neural network parameters
-model_path = "script/most_accurate_model.pt"
+model_path = "script/model_noise.pt"
 
 
 def main() -> None:
@@ -153,11 +153,12 @@ def main() -> None:
     R1 = 0.075
     # M = 16.27 * 1e-6 # for a 5mm gap
     M = 5.2345e-06  # for a 20mm gap
-    # M = 6.04e-6
+    # M = 7.4129e-06  # for a 15mm gap
+    # M = 7e-6
     L2 = 24 * 1e-6
     C2 = 146e-9  # 1 / ((2 * np.pi * f0) ** 2 * L2)
     R2 = 0.075
-    R_l = 1.3
+    R_l = 1.6
 
     primary_s = wpt.transmitter(L=L1, C_s=C1, R=R1)
     secondary_s = wpt.reciever(L=L2, C_s=C2, R=R2, R_l=R_l)
@@ -166,17 +167,10 @@ def main() -> None:
     )
     model_impedance = np.array([wpt_system.impedance(freq) for freq in sys_frequencies])
 
-    plot_bode(
-        [model_impedance, smooth_sys_impedance, smooth_sys_impedance_MCU],
-        sys_frequencies,
-        forms=["", "x", "x"],
-        names=["Model", "Estimation_PC", "Estimation_MCU"],
-    )
-
     # Create the NN input tensor
 
     input_tensor = nn_input_tensor(
-        sys_impedance=smooth_sys_impedance,
+        sys_impedance=smooth_sys_impedance_MCU,
         sys_frequencies=sys_frequencies,
         L1=L1,
         R1=R1,
@@ -201,9 +195,25 @@ def main() -> None:
 
     # Print the parameters estimation
 
-    print(f"M = {M*1e6:5.2f} µH")
     print(f"R = {R:5.2f} Ohm")
+    print(f"M = {M*1e6:5.2f} µH")
+
+    secondary_s = wpt.reciever(L=L2, C_s=C2, R=R2, R_l=R)
+    wpt_system = wpt.total_system(
+        transmitter=primary_s, reciever=secondary_s, M=M, name="model"
+    )
+    model2_impedance = np.array(
+        [wpt_system.impedance(freq) for freq in sys_frequencies]
+    )
+
+    plot_bode(
+        [model_impedance, smooth_sys_impedance_MCU, model2_impedance],
+        sys_frequencies,
+        forms=["", "x", ""],
+        names=["Model", "Estimation", "Model_w/_estim"],
+    )
 
 
 if __name__ == "__main__":
-    main()
+    while True:
+        main()
