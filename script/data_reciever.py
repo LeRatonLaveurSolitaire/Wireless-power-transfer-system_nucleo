@@ -16,7 +16,7 @@ import wpt_system_class as wpt
 # Board parameters
 PORT = "COM3"
 sampling_period = 1e-6
-Q = 6.6 / 4095 / 500 / 0.001  # Quantization factor (int -> Amp)
+Q = 6.6 / 4095 / 496 / 0.001  # Quantization factor (int -> Amp)
 
 # WPT system parameters
 L1 = 24e-6

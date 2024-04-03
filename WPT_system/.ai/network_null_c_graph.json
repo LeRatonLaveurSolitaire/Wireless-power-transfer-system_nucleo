@@ -3,8 +3,8 @@
     "c_layers": [
         {
             "next": "_relu1_Relu_output_0",
-            "rom": 5376,
-            "op_by_type": {"smul_f32_f32c8": 3968},
+            "rom": 15872,
+            "op_by_type": {"smul_f32_f32": 3968},
             "c_forward": "forward_dense",
             "c_code_emit": true,
             "macc": 3968,
@@ -20,9 +20,9 @@
                 ]
             },
             "weight_sparsity": [
-                2.520161290322509E-4,
+                0,
                 3968,
-                1
+                0
             ],
             "layer_type": "dense",
             "m_id": 1
@@ -52,8 +52,8 @@
         },
         {
             "next": "_relu2_Relu_output_0",
-            "rom": 17920,
-            "op_by_type": {"smul_f32_f32c8": 16512},
+            "rom": 66048,
+            "op_by_type": {"smul_f32_f32": 16512},
             "c_forward": "forward_dense",
             "c_code_emit": true,
             "macc": 16512,
@@ -69,9 +69,9 @@
                 ]
             },
             "weight_sparsity": [
-                6.05620155038622E-5,
+                0,
                 16512,
-                1
+                0
             ],
             "layer_type": "dense",
             "m_id": 3
@@ -101,8 +101,8 @@
         },
         {
             "next": "_relu3_Relu_output_0",
-            "rom": 17920,
-            "op_by_type": {"smul_f32_f32c8": 16512},
+            "rom": 66048,
+            "op_by_type": {"smul_f32_f32": 16512},
             "c_forward": "forward_dense",
             "c_code_emit": true,
             "macc": 16512,
@@ -118,9 +118,9 @@
                 ]
             },
             "weight_sparsity": [
-                6.05620155038622E-5,
+                0,
                 16512,
-                1
+                0
             ],
             "layer_type": "dense",
             "m_id": 5
@@ -150,8 +150,8 @@
         },
         {
             "next": "_relu4_Relu_output_0",
-            "rom": 17920,
-            "op_by_type": {"smul_f32_f32c8": 16512},
+            "rom": 66048,
+            "op_by_type": {"smul_f32_f32": 16512},
             "c_forward": "forward_dense",
             "c_code_emit": true,
             "macc": 16512,
@@ -167,9 +167,9 @@
                 ]
             },
             "weight_sparsity": [
-                6.05620155038622E-5,
+                0,
                 16512,
-                1
+                0
             ],
             "layer_type": "dense",
             "m_id": 7
@@ -231,7 +231,7 @@
             "allocate-inputs",
             "allocate-outputs"
         ],
-        "compression": "low"
+        "compression": "none"
     },
     "inputs": ["input_output"],
     "macc": 54274,
@@ -246,27 +246,6 @@
             "offset": 0,
             "is_const": true,
             "format": "float32",
-            "n_items": 128,
-            "tensors": [{
-                "shape": [128],
-                "name": "_linear2_Gemm_output_0_bias"
-            }],
-            "zeros": 0,
-            "raw_fmt": "(FLOAT, 32 bit, C Size: 32 bits)",
-            "c_mem_pool": "weights",
-            "padded": true,
-            "size": 128,
-            "c_type": "const float",
-            "name": "_linear2_Gemm_output_0_bias_array",
-            "c_id": 0,
-            "c_bits": 32,
-            "c_size_in_byte": 512
-        },
-        {
-            "mem_pool": "weights",
-            "offset": 1536,
-            "is_const": true,
-            "format": "c8 (LUT8)",
             "n_items": 16384,
             "tensors": [{
                 "shape": [
@@ -275,20 +254,20 @@
                 ],
                 "name": "_linear3_Gemm_output_0_weights"
             }],
-            "zeros": 1,
-            "raw_fmt": "(LUT_FLOAT, 8 bit, C Size: 8 bits)",
+            "zeros": 0,
+            "raw_fmt": "(FLOAT, 32 bit, C Size: 32 bits)",
             "c_mem_pool": "weights",
             "padded": true,
             "size": 16384,
             "c_type": "const float",
             "name": "_linear3_Gemm_output_0_weights_array",
-            "c_id": 1,
-            "c_bits": 8,
-            "c_size_in_byte": 17408
+            "c_id": 0,
+            "c_bits": 32,
+            "c_size_in_byte": 65536
         },
         {
             "mem_pool": "weights",
-            "offset": 17920,
+            "offset": 65536,
             "is_const": true,
             "format": "float32",
             "n_items": 128,
@@ -303,15 +282,15 @@
             "size": 128,
             "c_type": "const float",
             "name": "_linear3_Gemm_output_0_bias_array",
-            "c_id": 2,
+            "c_id": 1,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
         {
             "mem_pool": "weights",
-            "offset": 19456,
+            "offset": 66048,
             "is_const": true,
-            "format": "c8 (LUT8)",
+            "format": "float32",
             "n_items": 16384,
             "tensors": [{
                 "shape": [
@@ -320,20 +299,20 @@
                 ],
                 "name": "_linear4_Gemm_output_0_weights"
             }],
-            "zeros": 1,
-            "raw_fmt": "(LUT_FLOAT, 8 bit, C Size: 8 bits)",
+            "zeros": 0,
+            "raw_fmt": "(FLOAT, 32 bit, C Size: 32 bits)",
             "c_mem_pool": "weights",
             "padded": true,
             "size": 16384,
             "c_type": "const float",
             "name": "_linear4_Gemm_output_0_weights_array",
-            "c_id": 3,
-            "c_bits": 8,
-            "c_size_in_byte": 17408
+            "c_id": 2,
+            "c_bits": 32,
+            "c_size_in_byte": 65536
         },
         {
             "mem_pool": "weights",
-            "offset": 35840,
+            "offset": 131584,
             "is_const": true,
             "format": "float32",
             "n_items": 128,
@@ -348,13 +327,13 @@
             "size": 128,
             "c_type": "const float",
             "name": "_linear4_Gemm_output_0_bias_array",
-            "c_id": 4,
+            "c_id": 3,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
         {
             "mem_pool": "weights",
-            "offset": 36352,
+            "offset": 132096,
             "is_const": true,
             "format": "float32",
             "n_items": 256,
@@ -372,13 +351,13 @@
             "size": 256,
             "c_type": "const float",
             "name": "output_weights_array",
-            "c_id": 5,
+            "c_id": 4,
             "c_bits": 32,
             "c_size_in_byte": 1024
         },
         {
             "mem_pool": "weights",
-            "offset": 37376,
+            "offset": 133120,
             "is_const": true,
             "format": "float32",
             "n_items": 2,
@@ -393,7 +372,7 @@
             "size": 2,
             "c_type": "const float",
             "name": "output_bias_array",
-            "c_id": 6,
+            "c_id": 5,
             "c_bits": 32,
             "c_size_in_byte": 8
         },
@@ -416,7 +395,7 @@
             "size": 30,
             "c_type": "float",
             "name": "input_output_array",
-            "c_id": 7,
+            "c_id": 6,
             "c_bits": 32,
             "c_size_in_byte": 120,
             "io_type": "input"
@@ -440,7 +419,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_linear1_Gemm_output_0_output_array",
-            "c_id": 8,
+            "c_id": 7,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -463,7 +442,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_relu1_Relu_output_0_output_array",
-            "c_id": 9,
+            "c_id": 8,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -486,7 +465,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_linear2_Gemm_output_0_output_array",
-            "c_id": 10,
+            "c_id": 9,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -509,7 +488,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_relu2_Relu_output_0_output_array",
-            "c_id": 11,
+            "c_id": 10,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -532,7 +511,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_linear3_Gemm_output_0_output_array",
-            "c_id": 12,
+            "c_id": 11,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -555,7 +534,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_relu3_Relu_output_0_output_array",
-            "c_id": 13,
+            "c_id": 12,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -578,7 +557,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_linear4_Gemm_output_0_output_array",
-            "c_id": 14,
+            "c_id": 13,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -601,7 +580,7 @@
             "size": 128,
             "c_type": "float",
             "name": "_relu4_Relu_output_0_output_array",
-            "c_id": 15,
+            "c_id": 14,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
@@ -624,16 +603,16 @@
             "size": 2,
             "c_type": "float",
             "name": "output_output_array",
-            "c_id": 16,
+            "c_id": 15,
             "c_bits": 32,
             "c_size_in_byte": 8,
             "io_type": "output"
         },
         {
             "mem_pool": "weights",
-            "offset": 38408,
+            "offset": 133128,
             "is_const": true,
-            "format": "c8 (LUT8)",
+            "format": "float32",
             "n_items": 3840,
             "tensors": [{
                 "shape": [
@@ -642,20 +621,20 @@
                 ],
                 "name": "_linear1_Gemm_output_0_weights"
             }],
-            "zeros": 1,
-            "raw_fmt": "(LUT_FLOAT, 8 bit, C Size: 8 bits)",
+            "zeros": 0,
+            "raw_fmt": "(FLOAT, 32 bit, C Size: 32 bits)",
             "c_mem_pool": "weights",
             "padded": true,
             "size": 3840,
             "c_type": "const float",
             "name": "_linear1_Gemm_output_0_weights_array",
-            "c_id": 17,
-            "c_bits": 8,
-            "c_size_in_byte": 4864
+            "c_id": 16,
+            "c_bits": 32,
+            "c_size_in_byte": 15360
         },
         {
             "mem_pool": "weights",
-            "offset": 42248,
+            "offset": 148488,
             "is_const": true,
             "format": "float32",
             "n_items": 128,
@@ -670,15 +649,15 @@
             "size": 128,
             "c_type": "const float",
             "name": "_linear1_Gemm_output_0_bias_array",
-            "c_id": 18,
+            "c_id": 17,
             "c_bits": 32,
             "c_size_in_byte": 512
         },
         {
             "mem_pool": "weights",
-            "offset": 43784,
+            "offset": 149000,
             "is_const": true,
-            "format": "c8 (LUT8)",
+            "format": "float32",
             "n_items": 16384,
             "tensors": [{
                 "shape": [
@@ -687,21 +666,42 @@
                 ],
                 "name": "_linear2_Gemm_output_0_weights"
             }],
-            "zeros": 1,
-            "raw_fmt": "(LUT_FLOAT, 8 bit, C Size: 8 bits)",
+            "zeros": 0,
+            "raw_fmt": "(FLOAT, 32 bit, C Size: 32 bits)",
             "c_mem_pool": "weights",
             "padded": true,
             "size": 16384,
             "c_type": "const float",
             "name": "_linear2_Gemm_output_0_weights_array",
+            "c_id": 18,
+            "c_bits": 32,
+            "c_size_in_byte": 65536
+        },
+        {
+            "mem_pool": "weights",
+            "offset": 214536,
+            "is_const": true,
+            "format": "float32",
+            "n_items": 128,
+            "tensors": [{
+                "shape": [128],
+                "name": "_linear2_Gemm_output_0_bias"
+            }],
+            "zeros": 0,
+            "raw_fmt": "(FLOAT, 32 bit, C Size: 32 bits)",
+            "c_mem_pool": "weights",
+            "padded": true,
+            "size": 128,
+            "c_type": "const float",
+            "name": "_linear2_Gemm_output_0_bias_array",
             "c_id": 19,
-            "c_bits": 8,
-            "c_size_in_byte": 17408
+            "c_bits": 32,
+            "c_size_in_byte": 512
         }
     ],
     "c_activations_count": 1,
-    "date_time": "Mon Mar 18 14:04:40 2024",
-    "model_name": "model",
+    "date_time": "Tue Apr  2 16:39:31 2024",
+    "model_name": "model_no_z1",
     "tool_version": {
         "major": 1,
         "minor": 7,
@@ -717,98 +717,98 @@
     "model_fmt": "float",
     "c_weights_count": 1,
     "weights": {"weights_array": {
-        "buffer_data_size": 60168,
+        "buffer_data_size": 215048,
         "buffer_crc": 0,
-        "pool_size": 60168,
+        "pool_size": 215048,
         "buffer_c_type": "u64",
         "buffer_c_name": "s_network_weights_array_u64",
         "buffer_offsets": [
             {
                 "lite_tag": null,
                 "offset": 0,
-                "size": 512,
+                "size": 65536,
                 "start_offset": 0,
-                "buffer_name": "_linear2_Gemm_output_0_bias_array"
-            },
-            {
-                "lite_tag": null,
-                "offset": 1536,
-                "size": 17408,
-                "start_offset": 512,
                 "buffer_name": "_linear3_Gemm_output_0_weights_array"
             },
             {
                 "lite_tag": null,
-                "offset": 17920,
+                "offset": 65536,
                 "size": 512,
-                "start_offset": 17920,
+                "start_offset": 65536,
                 "buffer_name": "_linear3_Gemm_output_0_bias_array"
             },
             {
                 "lite_tag": null,
-                "offset": 19456,
-                "size": 17408,
-                "start_offset": 18432,
+                "offset": 66048,
+                "size": 65536,
+                "start_offset": 66048,
                 "buffer_name": "_linear4_Gemm_output_0_weights_array"
             },
             {
                 "lite_tag": null,
-                "offset": 35840,
+                "offset": 131584,
                 "size": 512,
-                "start_offset": 35840,
+                "start_offset": 131584,
                 "buffer_name": "_linear4_Gemm_output_0_bias_array"
             },
             {
                 "lite_tag": null,
-                "offset": 36352,
+                "offset": 132096,
                 "size": 1024,
-                "start_offset": 36352,
+                "start_offset": 132096,
                 "buffer_name": "output_weights_array"
             },
             {
                 "lite_tag": null,
-                "offset": 37376,
+                "offset": 133120,
                 "size": 8,
-                "start_offset": 37376,
+                "start_offset": 133120,
                 "buffer_name": "output_bias_array"
             },
             {
                 "lite_tag": null,
-                "offset": 38408,
-                "size": 4864,
-                "start_offset": 37384,
+                "offset": 133128,
+                "size": 15360,
+                "start_offset": 133128,
                 "buffer_name": "_linear1_Gemm_output_0_weights_array"
             },
             {
                 "lite_tag": null,
-                "offset": 42248,
+                "offset": 148488,
                 "size": 512,
-                "start_offset": 42248,
+                "start_offset": 148488,
                 "buffer_name": "_linear1_Gemm_output_0_bias_array"
             },
             {
                 "lite_tag": null,
-                "offset": 43784,
-                "size": 17408,
-                "start_offset": 42760,
+                "offset": 149000,
+                "size": 65536,
+                "start_offset": 149000,
                 "buffer_name": "_linear2_Gemm_output_0_weights_array"
+            },
+            {
+                "lite_tag": null,
+                "offset": 214536,
+                "size": 512,
+                "start_offset": 214536,
+                "buffer_name": "_linear2_Gemm_output_0_bias_array"
             }
         ],
         "buffer_c_name_addr": "s_network_weights_array_u64",
-        "buffer_c_count": 7521,
+        "buffer_c_count": 26881,
         "pool_id": 0,
         "buffer_c_data": []
     }},
     "memory_footprint": {
         "kernel_ram": 2804,
-        "kernel_flash": 11192,
+        "kernel_flash": 11160,
         "io": [
             0,
             0
         ],
         "series": "generic",
         "activations": 1024,
-        "weights": 60168
+        "weights": 215048
     },
     "version": "1.2",
     "tool_api_version": {
@@ -816,7 +816,7 @@
         "minor": 5,
         "micro": 0
     },
-    "model_signature": "30bcdacf5b9061b1fb68bee7c8ecdd5e",
+    "model_signature": "7290c01f46ceea4090326d262d6e08a0",
     "params_alignment": 4,
     "activations": {"heap_overlay_pool": {
         "buffer_data_size": 0,

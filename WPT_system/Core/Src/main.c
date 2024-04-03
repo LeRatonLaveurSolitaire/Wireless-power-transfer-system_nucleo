@@ -50,10 +50,11 @@
 #define C1 0.000000146				// Capacitor value in F
 #define SQRT_L1L2_uH 24					// Primary coil impedance in H
 #define Vcc	10						// V bus voltage in volt
-#define Q 1.65/1023 /500 /0.001		// Quantization factor in ampere per step
+#define Q 6.6/4095 /494 /0.001	/0.7	// Quantization factor in ampere per step
 
 #define DEVICE_ADDRESS 	0b0111100
 #define TX_TIMEOUT		100
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -71,7 +72,6 @@ DMA_HandleTypeDef hdma_adc2;
 CRC_HandleTypeDef hcrc;
 
 I2C_HandleTypeDef hi2c1;
-DMA_HandleTypeDef hdma_i2c1_tx;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
@@ -124,7 +124,6 @@ static u8g2_t u8g2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
-static void MX_I2C1_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_CRC_Init(void);
@@ -132,6 +131,7 @@ static void MX_ADC3_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 static int8_t PRBS();
@@ -190,7 +190,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
-  MX_I2C1_Init();
   MX_ADC1_Init();
   MX_TIM3_Init();
   MX_CRC_Init();
@@ -198,6 +197,7 @@ int main(void)
   MX_TIM1_Init();
   MX_ADC2_Init();
   MX_USART2_UART_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
 	HAL_ADCEx_Calibration_Start(&hadc3,POTENTIOMETER_Pin);
@@ -231,19 +231,20 @@ int main(void)
 		filtering_high_index_list[i-1] = high_bound - i;
 	}
 
-	u8g2_Setup_ssd1306_i2c_128x64_noname_1(&u8g2, U8G2_R2,(u8x8_msg_cb) u8x8_byte_stm32_hw_i2c,(u8x8_msg_cb) u8x8_stm32_gpio_and_delay);  // init u8g2 structure
+
+	u8g2_Setup_ssd1306_i2c_128x64_noname_1(&u8g2, U8G2_R0,(u8x8_msg_cb) u8x8_byte_stm32_hw_i2c,(u8x8_msg_cb) u8x8_stm32_gpio_and_delay);  // init u8g2 structure
 	u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
 	u8g2_SetPowerSave(&u8g2, 0); // wake up display
 	u8g2_ClearDisplay(&u8g2);
 	u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
 	do {
-		u8g2_DrawStr(&u8g2,6,60, "Press USER to start");
-		u8g2_DrawFrame(&u8g2,50 -12, 15 - 12, 25,25);
-		u8g2_DrawCircle(&u8g2, 50, 15, 8, U8G2_DRAW_ALL);
-		u8g2_DrawLine(&u8g2, 68,15,95,15);
-		u8g2_DrawLine(&u8g2, 68,15,78,10);
-		u8g2_DrawLine(&u8g2, 68,15,78,20);
-		u8g2_DrawStr(&u8g2,39,40, "USER");
+		u8g2_DrawStr(&u8g2,6,14, "Press USER to start");
+		u8g2_DrawFrame(&u8g2,50 -12, 35 - 12, 25,25);
+		u8g2_DrawCircle(&u8g2, 50, 35, 8, U8G2_DRAW_ALL);
+		u8g2_DrawLine(&u8g2, 68,35,95,35);
+		u8g2_DrawLine(&u8g2, 68,35,78,30);
+		u8g2_DrawLine(&u8g2, 68,35,78,40);
+		u8g2_DrawStr(&u8g2,39,60, "USER");
 	} while (u8g2_NextPage(&u8g2));
 
   /* USER CODE END 2 */
@@ -264,13 +265,13 @@ int main(void)
 		}
 
 		if (HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) & !BP_STATE_OLD & !COMPUTE_ACTIVE){
-			u8g2_ClearDisplay(&u8g2);
-			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-			do {
-				u8g2_DrawStr(&u8g2,5,20, "Computing parameters");
-				u8g2_DrawStr(&u8g2,20,40, "Please wait...");
-			} while (u8g2_NextPage(&u8g2));
-
+//			u8g2_ClearDisplay(&u8g2);
+//			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+//			do {
+//				u8g2_DrawStr(&u8g2,5,20, "Computing parameters");
+//				u8g2_DrawStr(&u8g2,20,40, "Please wait...");
+//			} while (u8g2_NextPage(&u8g2));
+//
 			noisy_current_sig = (int16_t *)malloc(SIG_BUFF_LEN * sizeof(int16_t));
 			noisy_voltage_sig = (int16_t *)malloc(SIG_BUFF_LEN * sizeof(int16_t));
 			PRBS_ACTIVE = 1;
@@ -291,10 +292,10 @@ int main(void)
 				noisy_mean+=noisy_current_sig[i];
 
 				if (noisy_voltage_sig[i] < low_threshold){
-					noisy_voltage_sig[i]= Vcc;
+					noisy_voltage_sig[i]= -Vcc;
 				}
 				else if (noisy_voltage_sig[i] > high_threshold){
-					noisy_voltage_sig[i]= -Vcc;
+					noisy_voltage_sig[i]= Vcc;
 				}
 				else{
 					noisy_voltage_sig[i]= 0;
@@ -307,13 +308,13 @@ int main(void)
 
 			/* 			Send the signals via UART		*/
 
-			char message[100];
-			sprintf(message, "index,nc,nv\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
-				sprintf(message, "%d,%d,%d\n",i,noisy_current_sig[i],noisy_voltage_sig[i]);
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-			}
+//			char message[100];
+//			sprintf(message, "index,nc,nv\n");
+//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
+//				sprintf(message, "%d,%d,%d\n",i,noisy_current_sig[i],noisy_voltage_sig[i]);
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//			}
 
 			/*		Transform signals into float32		*/
 
@@ -446,7 +447,7 @@ int main(void)
 				amplitude /= (high_bound - low_bound + 1);
 				phase /= (high_bound - low_bound + 1);
 
-				amplitude *= 0.7;
+				//amplitude *= 0.7;
 
 				sys_impedance[i-1].r = amplitude*cos(phase);
 				sys_impedance[i-1].i = amplitude*sin(phase);
@@ -475,13 +476,13 @@ int main(void)
 
 			/* 			Send the smoothed impedance via UART		*/
 
-			HAL_Delay(500);
-			sprintf(message, "index,impedance_r,impedance_i\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
-				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-			}
+//			HAL_Delay(500);
+//			sprintf(message, "index,impedance_r,impedance_i\n");
+//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
+//				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//			}
 
 			/* 				Compute the input tensor				*/
 
@@ -495,20 +496,20 @@ int main(void)
 
 			/* 			Send the input tensor via UART				*/
 
-			HAL_Delay(500);
-			sprintf(message, "index,value\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <15; i++){
-				sprintf(message, "%d,%f\n",i*2,mag_cpx(input_tensor[i]));
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-				sprintf(message, "%d,%f\n",i*2+1,ang_cpx(input_tensor[i]));
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-
-			}
+//			HAL_Delay(500);
+//			sprintf(message, "index,value\n");
+//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//			for(uint16_t i = 0; i <15; i++){
+//				sprintf(message, "%d,%f\n",i*2,mag_cpx(input_tensor[i]));
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//				sprintf(message, "%d,%f\n",i*2+1,ang_cpx(input_tensor[i]));
+//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//
+//			}
 
 
 			/* 			Compute neural network inference			*/
-
+			HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
 			for(uint16_t i = 0; i <15; i++){
 				in_data[i*2] = mag_cpx(input_tensor[i]);
 				in_data[i*2+1] = ang_cpx(input_tensor[i]);
@@ -516,12 +517,13 @@ int main(void)
 
 			aiRun(in_data,out_data);
 
+
 			float_t R_lin = out_data[0];
 			float_t M_lin = out_data[1];
 
 			float_t R = delinearize_R(R_lin);
 			float_t M = delinearize_M(M_lin);
-
+			HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
 			display_oled(R,M);
 
 			COMPUTE_ACTIVE = 0;
@@ -1070,9 +1072,6 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-  /* DMA1_Channel2_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
   /* DMA2_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel1_IRQn);
@@ -1291,6 +1290,7 @@ u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
 			data++;
 			arg_int--;
 		}
+
 		break;
 	case U8X8_MSG_BYTE_INIT:
 		/* add your custom code to init i2c subsystem */
@@ -1302,7 +1302,9 @@ u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
 		buf_idx = 0;
 		break;
 	case U8X8_MSG_BYTE_END_TRANSFER:
+		while(HAL_I2C_STATE_READY != hi2c1.State);
 		HAL_I2C_Master_Transmit(&hi2c1, DEVICE_ADDRESS  << 1, (uint8_t *)buffer, buf_idx, HAL_TIMEOUT);
+
 		break;
 	default:
 		return 0;
@@ -1320,11 +1322,11 @@ void display_oled(float_t R, float_t M){
 
 		do {
 			u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
-			u8g2_DrawStr(&u8g2,0,10, "Estimation :");
-			u8g2_DrawStr(&u8g2,0,32 - 6,line_1);
-			u8g2_DrawStr(&u8g2,0,48 - 6, line_2);
+			u8g2_DrawStr(&u8g2,0,30, "Estimation :");
+			u8g2_DrawStr(&u8g2,0,50 - 6,line_1);
+			u8g2_DrawStr(&u8g2,0,64 - 6, line_2);
 			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-			u8g2_DrawStr(&u8g2,0,60, "Press USER to restart");
+			u8g2_DrawStr(&u8g2,0,14, "Press USER to restart");
 
 		} while (u8g2_NextPage(&u8g2));
 	}
@@ -1332,11 +1334,11 @@ void display_oled(float_t R, float_t M){
 		u8g2_ClearDisplay(&u8g2);
 		do {
 			u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
-			u8g2_DrawStr(&u8g2,40,10,"Error..." );
-			u8g2_DrawStr(&u8g2,10,32 - 6,"Estimated values");
-			u8g2_DrawStr(&u8g2,25,48 - 6, "out of range");
+			u8g2_DrawStr(&u8g2,40,30,"Error..." );
+			u8g2_DrawStr(&u8g2,10,50 - 6,"Estimated values");
+			u8g2_DrawStr(&u8g2,25,64 - 6, "out of range");
 			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-			u8g2_DrawStr(&u8g2,0,60, "Press USER to restart");
+			u8g2_DrawStr(&u8g2,0,14, "Press USER to restart");
 
 		} while (u8g2_NextPage(&u8g2));
 	}
