@@ -42,7 +42,7 @@
 #define PI 3.14159265358979323846264338327
 #define SIG_BUFF_LEN 4000
 #define FFT_BUFF_LEN (SIG_BUFF_LEN/2 + 1)
-#define TAU 0.000006 				// Time delay impacting the phase (6e-6 in this case)
+#define OFFSET 6 					// offset between I and V (6e-6 in this case)
 #define Te 0.000001					// Sampling period
 #define smoothing_factor 1.04		// Filter coefficient
 #define L1 0.000024					// Primary coil impedance in H
@@ -50,7 +50,7 @@
 #define C1 0.000000146				// Capacitor value in F
 #define SQRT_L1L2_uH 24					// Primary coil impedance in H
 #define Vcc	10						// V bus voltage in volt
-#define Q 6.6/4095 /494 /0.001	/0.7	// Quantization factor in ampere per step
+#define Q 6.6/4095 /494 /0.001	/0.701	// Quantization factor in ampere per step
 
 #define DEVICE_ADDRESS 	0b0111100
 #define TX_TIMEOUT		100
@@ -167,6 +167,7 @@ void display_oled(float_t, float_t);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -265,14 +266,15 @@ int main(void)
 		}
 
 		if (HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) & !BP_STATE_OLD & !COMPUTE_ACTIVE){
-//			u8g2_ClearDisplay(&u8g2);
-//			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-//			do {
-//				u8g2_DrawStr(&u8g2,5,20, "Computing parameters");
-//				u8g2_DrawStr(&u8g2,20,40, "Please wait...");
-//			} while (u8g2_NextPage(&u8g2));
-//
-			noisy_current_sig = (int16_t *)malloc(SIG_BUFF_LEN * sizeof(int16_t));
+
+			u8g2_ClearDisplay(&u8g2);
+			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+			do {
+				u8g2_DrawStr(&u8g2,5,30, "Computing parameters");
+				u8g2_DrawStr(&u8g2,24,50, "Please wait...");
+			} while (u8g2_NextPage(&u8g2));
+
+			noisy_current_sig = (int16_t *)malloc((SIG_BUFF_LEN + OFFSET) * sizeof(int16_t));
 			noisy_voltage_sig = (int16_t *)malloc(SIG_BUFF_LEN * sizeof(int16_t));
 			PRBS_ACTIVE = 1;
 			BP_STATE_OLD = 1;
@@ -301,8 +303,13 @@ int main(void)
 					noisy_voltage_sig[i]= 0;
 				}
 			}
-			noisy_mean/=SIG_BUFF_LEN;
-			for(uint16_t i=0;i < SIG_BUFF_LEN;i++){
+			for (int i = SIG_BUFF_LEN;i < SIG_BUFF_LEN + OFFSET;i++){
+				noisy_mean+=noisy_current_sig[i];
+			}
+
+
+			noisy_mean/=(SIG_BUFF_LEN+OFFSET);
+			for(uint16_t i=0;i < SIG_BUFF_LEN + OFFSET;i++){
 				noisy_current_sig[i]-=noisy_mean;
 			}
 
@@ -325,7 +332,7 @@ int main(void)
 			}
 
 			for(uint16_t i=0;i <SIG_BUFF_LEN;i++){
-				noisy_current_sig_float[i] = noisy_current_sig[i] * Q;
+				noisy_current_sig_float[i] = noisy_current_sig[i+OFFSET] * Q;
 			}
 			free(noisy_current_sig);
 
@@ -390,15 +397,24 @@ int main(void)
 			free(noisy_current_fft);
 			free(noisy_voltage_fft);
 
-			/* 			Filtering of the impedance			*/
+			/* 				Send the impedance via UART			*/
 
-			for(uint16_t i=0;i <FFT_BUFF_LEN-1;i++){ //np.pi * 2 * sys_frequencies[i] * tau + 1j*np.pi
-				kiss_fft_cpx phase_correction;
-				float_t freq = (i+1) / (2 * Te * (FFT_BUFF_LEN - 1));
-				phase_correction.r = cos(-2 * PI * freq * TAU + PI);
-				phase_correction.i = sin(-2 * PI * freq * TAU + PI);
-				sys_impedance[i] = mul_cpx(sys_impedance[i],phase_correction); // +1 for the 0Hz offset
+			char message[100];
+			sprintf(message, "index,impedance_r,impedance_i\n");
+			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
+				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
+				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
 			}
+			/* 	Filtering of the impedance (time shift correction)	*/
+
+//			for(uint16_t i=0;i <FFT_BUFF_LEN-1;i++){ //np.pi * 2 * sys_frequencies[i] * tau + 1j*np.pi
+//				kiss_fft_cpx phase_correction;
+//				float_t freq = (i+1) / (2 * Te * (FFT_BUFF_LEN - 1));
+//				phase_correction.r = cos(-2 * PI * freq * TAU + PI);
+//				phase_correction.i = sin(-2 * PI * freq * TAU + PI);
+//				sys_impedance[i] = mul_cpx(sys_impedance[i],phase_correction); // +1 for the 0Hz offset
+//			}
 
 			/* 			Smoothing of the impedance			*/
 
@@ -447,8 +463,6 @@ int main(void)
 				amplitude /= (high_bound - low_bound + 1);
 				phase /= (high_bound - low_bound + 1);
 
-				//amplitude *= 0.7;
-
 				sys_impedance[i-1].r = amplitude*cos(phase);
 				sys_impedance[i-1].i = amplitude*sin(phase);
 
@@ -476,7 +490,8 @@ int main(void)
 
 			/* 			Send the smoothed impedance via UART		*/
 
-//			HAL_Delay(500);
+//			HAL_Delay(200);
+//			char message[300];
 //			sprintf(message, "index,impedance_r,impedance_i\n");
 //			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
 //			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
@@ -487,7 +502,7 @@ int main(void)
 			/* 				Compute the input tensor				*/
 
 			for(uint8_t i = 0; i < 15; i++){
-				float_t freq = (index_list[i]+1) / (2 * Te * (FFT_BUFF_LEN - 1));
+				//float_t freq = (index_list[i]+1) / (2 * Te * (FFT_BUFF_LEN - 1));
 				input_tensor[i].r = sys_impedance[index_list[i]].r ;// - R1;
 				input_tensor[i].i = sys_impedance[index_list[i]].i ;// - PI*2*freq*L1 + 1/(2*PI*freq*C1);
 			}
@@ -504,12 +519,11 @@ int main(void)
 //				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
 //				sprintf(message, "%d,%f\n",i*2+1,ang_cpx(input_tensor[i]));
 //				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//
 //			}
 
 
 			/* 			Compute neural network inference			*/
-			HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
+
 			for(uint16_t i = 0; i <15; i++){
 				in_data[i*2] = mag_cpx(input_tensor[i]);
 				in_data[i*2+1] = ang_cpx(input_tensor[i]);
@@ -523,7 +537,7 @@ int main(void)
 
 			float_t R = delinearize_R(R_lin);
 			float_t M = delinearize_M(M_lin);
-			HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
+
 			display_oled(R,M);
 
 			COMPUTE_ACTIVE = 0;
@@ -1139,11 +1153,11 @@ int8_t PRBS(){
 	counter +=1;
 
 	if (counter == PRBS_period-2){
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
+//		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
 		NOISE_ACTIVE =1;
 		HAL_TIM_Base_Start(&htim1);
 		HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_1);
-		HAL_ADC_Start_DMA(&hadc1,(int16_t *) noisy_current_sig ,SIG_BUFF_LEN); // Warning is normal here, we want to move int16_t
+		HAL_ADC_Start_DMA(&hadc1,(int16_t *) noisy_current_sig ,SIG_BUFF_LEN + OFFSET); // Warning is normal here, we want to move int16_t
 		HAL_ADC_Start_DMA(&hadc2,(int16_t *) noisy_voltage_sig ,SIG_BUFF_LEN); // but the HAL is configured for uint32_t
 	}
 	if (counter == 2*PRBS_period){
@@ -1152,7 +1166,7 @@ int8_t PRBS(){
 		HAL_TIM_Base_Stop(&htim1);
 		PRBS_ACTIVE = 0;
 		NOISE_ACTIVE = 0;
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
+//		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
 		COMPUTE_ACTIVE =1;
 	}
 
