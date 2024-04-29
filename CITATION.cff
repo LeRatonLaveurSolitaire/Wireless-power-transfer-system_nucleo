@@ -1,0 +1,19 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Implementation a wireless power transfer system parameters
+  identification tehcnique on a nucleo board
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Thomas
+    family-names: Boulanger
+    email: thomas.boulanger@ens-paris-saclay.fr
+    affiliation: ENS Paris-Saclay
+repository-code: >-
+  https://github.com/LeRatonLaveurSolitaire/Wireless-power-transfer-system_nucleo
+license: GPL-3.0

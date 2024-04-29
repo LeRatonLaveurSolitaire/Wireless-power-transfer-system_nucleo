@@ -12,7 +12,7 @@ labels = (
     # "Phase centering",
     "Neural network",
 )
-sizes = [168, 375, 5, 410, 9]  # 12,
+sizes = [168, 375, 5, 220, 9]  # 12,
 
 
 def func(pct, allvals):

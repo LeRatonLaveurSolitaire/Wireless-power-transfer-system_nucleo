@@ -15,7 +15,7 @@ import wpt_system_class as wpt
 
 # Board parameters
 PORT = "COM3"
-sampling_period = 0.995e-6
+sampling_period = 1e-6
 Q = 6.6 / 4095 / 496 / 0.001  # Quantization factor (int -> Amp)
 
 # WPT system parameters
@@ -91,17 +91,17 @@ def main() -> None:
             i, impedance_r, impedance_i = received.split(",")
             recieved_impedance.append(float(impedance_r) + 1j * float(impedance_i))
 
-    # recieved_tensor = []
+    recieved_tensor = []
 
-    # while received == "":
-    #     received = ser.readline().decode()
+    while received == "":
+        received = ser.readline().decode()
 
-    # while received != "":
-    #     received = ser.readline().decode()
-    #     if "," in received:
-    #         print(received, end="")
-    #         i, val = received.split(",")
-    #         recieved_tensor.append(float(val))
+    while received != "":
+        received = ser.readline().decode()
+        if "," in received:
+            # print(received, end="")
+            i, val = received.split(",")
+            recieved_tensor.append(float(val))
 
     ser.close()
 
@@ -141,8 +141,8 @@ def main() -> None:
     sys_frequencies = list(
         np.fft.rfftfreq(2 * (len(system_impedance)), sampling_period)
     )
-    sys_frequencies.pop(0)
-
+    sys_frequencies.pop()
+    sys_frequencies[0] = 1
     sys_frequencies = np.array(sys_frequencies)
 
     # tau = 0  # 6e-6
@@ -157,18 +157,18 @@ def main() -> None:
     smooth_sys_impedance = fractional_decade_smoothing_impedance(
         impedances=system_impedance,
         frequencies=sys_frequencies,
-        fractional_factor=1.04,
+        fractional_factor=1.06,
     )
 
-    plot_bode(
-        [
-            system_impedance,
-            smooth_sys_impedance,
-        ],
-        sys_frequencies,
-        forms=["x", "x"],
-        names=["system_impedance", "smoothed impedance"],
-    )
+    # plot_bode(
+    #     [
+    #         system_impedance,
+    #         smooth_sys_impedance,
+    #     ],
+    #     sys_frequencies,
+    #     forms=["x", "x"],
+    #     names=["system_impedance", "smoothed impedance"],
+    # )
 
     phase_gain = -np.mean(
         np.angle(
@@ -181,15 +181,15 @@ def main() -> None:
         impedance * np.exp(1j * phase_gain) for impedance in smooth_sys_impedance
     ]
 
-    plot_bode(
-        [
-            smooth_sys_impedance,
-            smooth_sys_impedance_centered,
-        ],
-        sys_frequencies,
-        forms=["x", "x"],
-        names=["smoothed impedance", "phase centered"],
-    )
+    # plot_bode(
+    #     [
+    #         smooth_sys_impedance,
+    #         smooth_sys_impedance_centered,
+    #     ],
+    #     sys_frequencies,
+    #     forms=["x", "x"],
+    #     names=["smoothed impedance", "phase centered"],
+    # )
 
     # smooth_sys_impedance_MCU = np.array(recieved_impedance)
 
@@ -202,16 +202,16 @@ def main() -> None:
 
     f0 = 85000
     L1 = 24 * 1e-6
-    C1 = 145e-9  # 1 / ((2 * np.pi * f0) ** 2 * L1)
+    C1 = 152e-9  # 1 / ((2 * np.pi * f0) ** 2 * L1)
     R1 = 0.075
     # M = 16.27 * 1e-6 # for a 5mm gap
     # M = 5.2345e-06  # for a 20mm gap
     # M = 7.4129e-06  # for a 15mm gap
-    M = 6.32e-6
+    M = 8.22e-6
     L2 = 24 * 1e-6
-    C2 = 150e-9  # 1 / ((2 * np.pi * f0) ** 2 * L2)
+    C2 = 151e-9  # 1 / ((2 * np.pi * f0) ** 2 * L2)
     R2 = 0.4
-    R_l = 1.1
+    R_l = 3
 
     primary_s = wpt.transmitter(L=L1, C_s=C1, R=R1)
     primary_s = wpt.transmitter(L=L1, C_s=C1, R=R1)
@@ -230,8 +230,8 @@ def main() -> None:
         R1=R1,
         C1=C1,
     )
-    # for i in range(15):
-    #     print(f"{float(input_tensor[i]):.3f}, {recieved_tensor[i]:.3f}")
+    for i in range(30):
+        print(f"{float(input_tensor[i]):.3f}, {recieved_tensor[i]:.3f}")
 
     # Import the neural network
 
@@ -243,6 +243,7 @@ def main() -> None:
 
     with torch.inference_mode():
         output_tensor = neural_network(tensor(input_tensor))
+        # output_tensor = neural_network(tensor(recieved_tensor))
 
     R = delinearise_R_l(output_tensor[0].item())
     M = delinearise_M(output_tensor[1].item())
@@ -269,8 +270,16 @@ def main() -> None:
             model2_impedance,
         ],
         sys_frequencies,
-        forms=["", "x", ""],
-        names=["Model", "Estimation MCU", "Model_w/_estim"],
+        forms=[
+            "",
+            "x",
+            "",
+        ],
+        names=[
+            "Model",
+            "mesurment",
+            "Model w/ estimated param",
+        ],
     )
 
 
