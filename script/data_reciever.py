@@ -7,8 +7,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from torch import tensor
+import sys
+import os
 
-from nn_model import NN_model
+path_to_model = os.path.join(sys.path[0], "..", "neural_network")
+sys.path.insert(0, path_to_model)
+
+from model_class import NN_model
 from identification_functions import *
 from plot_function import *
 import wpt_system_class as wpt
@@ -24,7 +29,7 @@ C1 = 146e-9  # 1 / ((2 * np.pi * 85_000) ** 2 * L1)
 R1 = 0.075
 
 # Neural network parameters
-model_path = "script/model_noise.pt"
+model_path = "neural_network/model.pt"
 
 
 def main() -> None:
@@ -39,45 +44,6 @@ def main() -> None:
     # Wait for data
 
     received = ser.readline().decode()
-    # while received == "":
-    #     received = ser.readline().decode()
-    # print(received, end="")
-    # noisy_current, noisy_voltage = [], []
-
-    # Receive the data
-
-    # while received != "":
-    #     received = ser.readline().decode()
-    #     if "," in received:
-    #         print(received, end="")
-    #         i, nc, nv = received.split(",")
-    #         noisy_current.append(int(nc) * Q)
-    #         noisy_voltage.append(int(nv))
-
-    # fft_c, fft_v = [], []
-
-    # while received == "":
-    #     received = ser.readline().decode()
-
-    # while received != "":
-    #     received = ser.readline().decode()
-    #     if "," in received:
-    #         print(received, end="")
-    #         i, c_r, c_i, v_r, v_i = received.split(",")
-    #         fft_c.append(float(c_r) + 1j * float(c_i))
-    #         fft_v.append(float(v_r) + 1j * float(v_i))
-
-    # recieved_impedance_raw = []
-
-    # while received == "":
-    #     received = ser.readline().decode()
-
-    # while received != "":
-    #     received = ser.readline().decode()
-    #     if "," in received:
-    #         # print(received, end="")
-    #         i, impedance_r, impedance_i = received.split(",")
-    #         recieved_impedance_raw.append(float(impedance_r) + 1j * float(impedance_i))
 
     recieved_impedance = []
 
@@ -87,7 +53,6 @@ def main() -> None:
     while received != "":
         received = ser.readline().decode()
         if "," in received:
-            # print(received, end="")
             i, impedance_r, impedance_i = received.split(",")
             recieved_impedance.append(float(impedance_r) + 1j * float(impedance_i))
 
@@ -105,38 +70,6 @@ def main() -> None:
 
     ser.close()
 
-    # Plot the data
-
-    # plot_signals(noisy_current=noisy_current, noisy_voltage=noisy_voltage,sampling_period=sampling_period)
-
-    # Process the data
-
-    # sys_impedance, sys_frequencies = extract_impedance(
-    #     noisy_current=noisy_current,
-    #     noisy_voltage=noisy_voltage,
-    #     sampling_period=sampling_period,
-    #     tau=6e-6,
-    # )
-
-    # smooth_sys_impedance = fractional_decade_smoothing_impedance(
-    #     impedances=sys_impedance,
-    #     frequencies=sys_frequencies,
-    #     fractional_factor=1.04,
-    # )
-
-    # adjust the phase so the mean phase between 75000 and 95000 is 0 wich should be the case in the real system
-    # phase_gain = -np.mean(
-    #     np.angle(
-    #         smooth_sys_impedance[
-    #             np.where((sys_frequencies < 95_000) & (sys_frequencies > 75_000))
-    #         ]
-    #     )
-    # )
-
-    # smooth_sys_impedance = [
-    #     impedance * np.exp(1j * phase_gain) for impedance in smooth_sys_impedance
-    # ]
-
     system_impedance = np.array(recieved_impedance)
     sys_frequencies = list(
         np.fft.rfftfreq(2 * (len(system_impedance)), sampling_period)
@@ -144,15 +77,6 @@ def main() -> None:
     sys_frequencies.pop()
     sys_frequencies[0] = 1
     sys_frequencies = np.array(sys_frequencies)
-
-    # tau = 0  # 6e-6
-    # system_impedance_MCU = np.array(
-    #     [
-    #         system_impedance_MCU[i]
-    #         * np.exp(-1j * np.pi * 2 * sys_frequencies[i] * tau + 1j * np.pi)
-    #         for i in range(len(system_impedance_MCU))
-    #     ]
-    # )
 
     smooth_sys_impedance = fractional_decade_smoothing_impedance(
         impedances=system_impedance,
@@ -167,7 +91,7 @@ def main() -> None:
     #     ],
     #     sys_frequencies,
     #     forms=["x", "x"],
-    #     names=["system_impedance", "smoothed impedance"],
+    #     names=["raw impedance", "smoothed impedance"],
     # )
 
     phase_gain = -np.mean(
@@ -191,15 +115,6 @@ def main() -> None:
     #     names=["smoothed impedance", "phase centered"],
     # )
 
-    # smooth_sys_impedance_MCU = np.array(recieved_impedance)
-
-    # sys_frequencies = list(
-    #     np.fft.rfftfreq(2 * (len(smooth_sys_impedance_MCU)), sampling_period)
-    # )
-    # sys_frequencies.pop(0)
-
-    # sys_frequencies = np.array(sys_frequencies)
-
     f0 = 85000
     L1 = 24 * 1e-6
     C1 = 152e-9  # 1 / ((2 * np.pi * f0) ** 2 * L1)
@@ -207,7 +122,7 @@ def main() -> None:
     # M = 16.27 * 1e-6 # for a 5mm gap
     # M = 5.2345e-06  # for a 20mm gap
     # M = 7.4129e-06  # for a 15mm gap
-    M = 8.22e-6
+    M = 6.01e-6
     L2 = 24 * 1e-6
     C2 = 151e-9  # 1 / ((2 * np.pi * f0) ** 2 * L2)
     R2 = 0.4
@@ -224,14 +139,14 @@ def main() -> None:
     # Create the NN input tensor
 
     input_tensor = nn_input_tensor(
-        sys_impedance=smooth_sys_impedance,
+        sys_impedance=smooth_sys_impedance_centered,
         sys_frequencies=sys_frequencies,
         L1=L1,
         R1=R1,
         C1=C1,
     )
-    for i in range(30):
-        print(f"{float(input_tensor[i]):.3f}, {recieved_tensor[i]:.3f}")
+    # for i in range(30):
+    #     print(f"{float(input_tensor[i]):.3f}, {recieved_tensor[i]:.3f}")
 
     # Import the neural network
 
@@ -262,24 +177,46 @@ def main() -> None:
         [wpt_system.impedance(freq) for freq in sys_frequencies]
     )
 
+    err = 0
+    for i in range(199, 578):
+        err += (
+            abs(
+                (
+                    abs(20 * np.log(model_impedance[i]))
+                    - abs(20 * np.log(smooth_sys_impedance_centered[i]))
+                )
+                / abs(20 * np.log(model_impedance[i]))
+            )
+            + abs(
+                (
+                    np.angle(model_impedance[i])
+                    - np.angle(smooth_sys_impedance_centered[i])
+                )
+                / np.angle(model_impedance[i])
+            )
+        ) / 2
+    err /= 578 - 199
+    print(f"relative error on the impedance plot : {err:.2%}")
+
     plot_bode(
         [
             model_impedance,
             # smooth_sys_impedance,
             smooth_sys_impedance_centered,
-            model2_impedance,
+            # model2_impedance,
         ],
         sys_frequencies,
         forms=[
             "",
             "x",
-            "",
+            # "r",
         ],
         names=[
             "Model",
             "mesurment",
-            "Model w/ estimated param",
+            # "Model w/ estimated param",
         ],
+        f0=85_000,
     )
 
 

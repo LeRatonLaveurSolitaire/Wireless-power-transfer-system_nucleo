@@ -1,8 +1,8 @@
 """A script that create a dataset.
 
 Data have the following shape :
-input : [Re(Z2(w1)), Im(Z2(w1)),...,Re(Z2(wn)),Im(Z2(wn))] with (w1, ... ,wn) the list of frequencies at which the impedance is mesured
-output : [R_l,M,f2]
+input : [|Z(w1)|, arg(Z(w1)),...,|Z(wn)|,arg(Z(wn))] with (w1, ... ,wn) the list of frequencies at which the impedance is mesured
+output : [R_l,M]
 """
 
 import random
@@ -10,14 +10,14 @@ import numpy as np
 import sys
 import os
 
-path_to_utils = os.path.join(sys.path[0], "..", "..", "..", "utils")
+path_to_utils = os.path.join(sys.path[0], "..", "script")
 sys.path.insert(0, path_to_utils)
 
 import wpt_system_class as wpt
 from dataset_class import CustomDataset
 
 
-def main():
+def main() -> None:
     """Main script function"""
 
     # data parameters
@@ -25,19 +25,19 @@ def main():
     f0 = 85_000
     L1 = 24e-6
     R1 = 0.075
-    C1 = 146e-9#1 / ((2 * np.pi * f0) ** 2 * L1)
+    C1 = 146e-9  # 1 / ((2 * np.pi * f0) ** 2 * L1)
     R2 = 0.075
     L2 = 24e-6
-    C2 = 146e-9#1 / ((2 * np.pi * f0) ** 2 * L2)
-    M_bound = [0.05*(L1*L2)**0.5, (L1*L2)**0.5]
+    C2 = 146e-9  # 1 / ((2 * np.pi * f0) ** 2 * L2)
+    M_bound = [0.05 * (L1 * L2) ** 0.5, (L1 * L2) ** 0.5]
     R_l_bound = [0.1, 10]
     C_2_bound = [
-        C2 * 80 / 85,
+        C2 * 79 / 85,
         C2 * 90 / 85,
     ]  # enable to vary the resonance frequency between 79kHz and 90kHz
     sigma = 0.05
 
-    frequencies_to_test = np.geomspace(50000, 144500, num=32, dtype=np.int64)
+    frequencies_to_test = np.geomspace(50000, 144500, num=15, dtype=np.int64)
 
     # dataset parameters
 
@@ -55,7 +55,7 @@ def main():
 
         # Normalizing dataset do have value between [-1;1]
         R_l_data = (np.log10(R_l)) * 10
-        M_data = (np.log10(M/(0.1 * (L1*L2)**0.5)) ) * 10
+        M_data = (np.log10(M / (0.1 * (L1 * L2) ** 0.5))) * 10
         f2_data = (f2 - 85000) / 500
 
         output_list = [R_l_data, M_data]
@@ -68,10 +68,10 @@ def main():
 
         for j, frequency in enumerate(frequencies_to_test):
             impedence = wpt_system.impedance(frequency=frequency)
-            #Z1 = R1 + 1j * L1 * 2 * np.pi * frequency - 1j / (C1 * 2 * np.pi * frequency)
-            Z2 = impedence #- Z1
-            input_list.append(np.absolute(Z2)*(random.gauss(1,sigma)))
-            input_list.append(np.angle(Z2)*random.gauss(1,sigma))
+            # Z1 = R1 + 1j * L1 * 2 * np.pi * frequency - 1j / (C1 * 2 * np.pi * frequency)
+            Z2 = impedence  # - Z1
+            input_list.append(np.absolute(Z2) * (random.gauss(1, sigma)))
+            input_list.append(np.angle(Z2) * random.gauss(1, sigma))
 
         data.append((input_list, output_list))
 
@@ -81,11 +81,7 @@ def main():
     print("Creation of the dataset... 100%")
     print("Saving the dataset as a pickle file")
     dataset = CustomDataset(data=data)
-    dataset.save(
-        file_path=os.path.join(
-            "src", "parameters_estimators", "NN_estimator", "dataset_32.pkl"
-        )
-    )
+    dataset.save(file_path=os.path.join("neural_network", "dataset.pkl"))
     print("Done !")
 
 

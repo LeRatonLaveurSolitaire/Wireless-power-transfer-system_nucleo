@@ -8,7 +8,7 @@ from torch.utils.tensorboard import SummaryWriter
 import time
 
 
-from nn_model import NN_model
+from model_class import NN_model
 from dataset_class import CustomDataset
 
 
@@ -19,7 +19,7 @@ def delinearise_R_l(R_l: float = 0):
 def delinearise_M(M: float = 0):
     L1 = 24e-6
     L2 = 24e-6
-    return 10 ** ((0.1 * M)) *(0.1 * (L1*L2)**0.5)
+    return 10 ** ((0.1 * M)) * (0.1 * (L1 * L2) ** 0.5)
 
 
 def delinearise_f2(f2: float = 0):
@@ -29,10 +29,8 @@ def delinearise_f2(f2: float = 0):
 def pretty_print(real: list = None, estim: list = None):
     real_r = delinearise_R_l(real[0])
     real_m = delinearise_M(real[1]) * 10**6
-    #real_f = delinearise_f2(real[2])
     estim_r = delinearise_R_l(estim[0])
     estim_m = delinearise_M(estim[1]) * 10**6
-    #estim_f = delinearise_f2(estim[2])
 
     print("|" + "-" * 37 + "|")
     print("| Parameter | Real value | Estimation |")
@@ -56,16 +54,7 @@ def pretty_print(real: list = None, estim: list = None):
         + f"{estim_m:^12.2f}"
         + "|"
     )
-    #print("|" + "-" * 11 + "|" + "-" * 12 + "|" + "-" * 12 + "|")
-    #print(
-    #    "|"
-    #    + f"{'f_2 (Hz)':^11}"
-    #    + "|"
-    #    + f"{real_f:^12.0f}"
-    #    + "|"
-    #    + f"{estim_f:^12.0f}"
-    #    + "|"
-    #)
+
     print("|" + "-" * 37 + "|" + "\n")
 
 
@@ -74,7 +63,7 @@ def main():
 
     # Load dataset
 
-    dataset_path = "src/parameters_estimators/NN_estimator/dataset_32.pkl"
+    dataset_path = "neural_network/dataset.pkl"
 
     print("Loading dataset...")
     dataset = CustomDataset()
@@ -128,7 +117,7 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    # load a model in case of error during training a
+    # load a model in case of error during training
 
     # model_path = ""
     # checkpoint = torch.load(file_path)
@@ -194,7 +183,7 @@ def main():
             min_inaccuracy = avg_inaccuracy_per_cent
             torch.save(
                 model.state_dict(),
-                "src/parameters_estimators/NN_estimator/models/most_accurate_model.pt",
+                "neural_network/models/most_accurate_model.pt",
             )
 
         if epoch % 10 == 0:
@@ -228,7 +217,7 @@ def main():
                     "optimizer_state_dict": optimizer.state_dict(),
                     "loss": loss,
                 },
-                f"src/parameters_estimators/NN_estimator/models/model_at_epoch_{epoch}.pt",
+                f"neural_network/models/model_at_epoch_{epoch}.pt",
             )
     writer.add_scalar("Accuracy/train", avg_inaccuracy_per_cent, epoch)
     writer.flush()
@@ -257,10 +246,10 @@ def main():
 
     avg_inaccuracy_per_cent = total_inaccuracy_per_cent / nbr_samples
     print(f"Final Inaccuracy :{avg_inaccuracy_per_cent:04.1f}%")
-    
+
     # Save final model
 
-    model_path = "src/parameters_estimators/NN_estimator/models/final_model.pt"
+    model_path = "neural_network/models/final_model.pt"
     torch.save(model.state_dict(), model_path)
 
     # Print some estimation

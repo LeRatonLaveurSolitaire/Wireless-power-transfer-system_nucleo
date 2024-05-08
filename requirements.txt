@@ -1,3 +1,5 @@
 matplotlib==3.8.2
 numpy==1.26.3
 torch==2.1.2
+tensorboard==1.15.0
+onnx==1.15.0

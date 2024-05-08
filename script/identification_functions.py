@@ -20,7 +20,9 @@ def delinearise_M(M: float = 0) -> float:
     """Recover M from the output data of the NN."""
     L1 = 24e-6
     L2 = 24e-6
-    return 10 ** ((M * 0.1)) * (0.1 * (L1 * L2) ** 0.5)
+    M_delin = 10 ** ((M * 0.1)) * (0.1 * (L1 * L2) ** 0.5)
+
+    return M_delin
 
 
 def fractional_decade_smoothing_impedance(

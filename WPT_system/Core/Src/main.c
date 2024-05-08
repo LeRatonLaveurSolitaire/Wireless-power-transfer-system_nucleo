@@ -21,12 +21,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include  <stdint.h>
-#include  <stdio.h>
-#include  <string.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
 #include "../../Drivers/kiss_fft/kiss_fft.h"
 #include "../../Drivers/kiss_fft/kiss_fftr.h"
-#include  <math.h>
+#include <math.h>
 #include "../../X-CUBE-AI/App/network.h"
 #include "../../X-CUBE-AI/App/network_data.h"
 #include "../../Drivers/u8g2/u8g2.h"
@@ -41,19 +41,19 @@
 /* USER CODE BEGIN PD */
 #define PI 3.14159265358979323846264338327
 #define SIG_BUFF_LEN 4000
-#define FFT_BUFF_LEN (SIG_BUFF_LEN/2 + 1)
-#define OFFSET 6 					// offset between I and V (6e-6 in this case)
-#define Te 0.000001					// Sampling period
-#define smoothing_factor 1.04		// Filter coefficient
-#define L1 0.000024					// Primary coil impedance in H
-#define R1 0.075					// Coil ESR in Ohm
-#define C1 0.000000146				// Capacitor value in F
-#define SQRT_L1L2_uH 24					// Primary coil impedance in H
-#define Vcc	10						// V bus voltage in volt
-#define Q 6.6/4095 /494 /0.001	/0.701	// Quantization factor in ampere per step
+#define FFT_BUFF_LEN (SIG_BUFF_LEN / 2 + 1)
+#define OFFSET 6                           // offset between I and V (6e-6 in this case)
+#define Te 0.000001                        // Sampling period
+#define smoothing_factor 1.06              // Filter coefficient
+#define L1 0.000024                        // Primary coil impedance in H
+#define R1 0.075                           // Coil ESR in Ohm
+#define C1 0.000000146                     // Capacitor value in F
+#define SQRT_L1L2_uH 24                    // sqrt of L1 * L2 in µH
+#define Vcc 10                             // V bus voltage in volt
+#define Q 6.6 / 4095 / 494 / 0.001 / 0.701 // Quantization factor in ampere per step
 
-#define DEVICE_ADDRESS 	0b0111100
-#define TX_TIMEOUT		100
+#define DEVICE_ADDRESS 0b0111100
+#define TX_TIMEOUT 100
 
 /* USER CODE END PD */
 
@@ -83,17 +83,17 @@ volatile uint16_t PHASE_SHIFT = 0;
 volatile uint8_t PRBS_ACTIVE = 0;
 volatile uint16_t PRBS_period = (1 << 10) - 1;
 volatile uint8_t BP_STATE_OLD = 0;
-volatile uint8_t PRBS_AMPLITUDE = 20;
+volatile uint8_t PRBS_AMPLITUDE = 15;
 volatile uint8_t NOISE_ACTIVE = 0;
 volatile uint8_t COMPUTE_ACTIVE = 0;
 
-int16_t* noisy_current_sig;
-int16_t* noisy_voltage_sig;
+int16_t *noisy_current_sig;
+int16_t *noisy_voltage_sig;
 
-volatile uint8_t filtering_low_index_list[FFT_BUFF_LEN -1];
-volatile uint8_t filtering_high_index_list[FFT_BUFF_LEN -1];
+volatile uint8_t filtering_low_index_list[FFT_BUFF_LEN - 1];
+volatile uint8_t filtering_high_index_list[FFT_BUFF_LEN - 1];
 
-uint16_t index_list[] = {199,215,232,250,270,291,314,339,366,395,426,459,496,535,577};
+uint16_t index_list[] = {199, 215, 232, 250, 270, 291, 314, 339, 366, 395, 426, 459, 496, 535, 577};
 kiss_fft_cpx input_tensor[15];
 
 /*################# AI declaration ################### */
@@ -101,20 +101,22 @@ kiss_fft_cpx input_tensor[15];
 static ai_handle network = AI_HANDLE_NULL;
 
 /* Global c-array to handle the activations buffer */
-AI_ALIGNED(32) static ai_u8 activations[AI_NETWORK_DATA_ACTIVATIONS_SIZE];
+AI_ALIGNED(32)
+static ai_u8 activations[AI_NETWORK_DATA_ACTIVATIONS_SIZE];
 
 /* Array to store the data of the input tensor */
-AI_ALIGNED(32) static ai_float in_data[AI_NETWORK_IN_1_SIZE];
+AI_ALIGNED(32)
+static ai_float in_data[AI_NETWORK_IN_1_SIZE];
 /* or static ai_u8 in_data[AI_NETWORK_IN_1_SIZE_BYTES]; */
 
 /* c-array to store the data of the output tensor */
-AI_ALIGNED(32) static ai_float out_data[AI_NETWORK_OUT_1_SIZE];
+AI_ALIGNED(32)
+static ai_float out_data[AI_NETWORK_OUT_1_SIZE];
 /*or static ai_u8 out_data[AI_NETWORK_OUT_1_SIZE_BYTES]; */
 
 /* Array of pointer to manage the model's input/output tensors */
 static ai_buffer *ai_input;
 static ai_buffer *ai_output;
-
 
 static u8g2_t u8g2;
 
@@ -149,8 +151,8 @@ int aiRun(const void *in_data, void *out_data);
 float_t delinearize_R(float_t);
 float_t delinearize_M(float_t);
 
-u8x8_msg_cb u8x8_stm32_gpio_and_delay(u8x8_t *, uint8_t , uint8_t , void *);
-u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *, uint8_t , uint8_t , void *);
+u8x8_msg_cb u8x8_stm32_gpio_and_delay(u8x8_t *, uint8_t, uint8_t, void *);
+u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *, uint8_t, uint8_t, void *);
 
 void display_oled(float_t, float_t);
 
@@ -162,9 +164,9 @@ void display_oled(float_t, float_t);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -201,370 +203,397 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
-	HAL_ADCEx_Calibration_Start(&hadc3,POTENTIOMETER_Pin);
+  HAL_ADCEx_Calibration_Start(&hadc3, POTENTIOMETER_Pin);
 
-	__HAL_RCC_CRC_CLK_ENABLE();
+  __HAL_RCC_CRC_CLK_ENABLE();
 
-	aiInit();
+  aiInit();
 
-	for (uint16_t i = 1; i < FFT_BUFF_LEN; i++) {
-		uint32_t low_bound = i;
-		uint32_t high_bound = i;
+  for (uint16_t i = 1; i < FFT_BUFF_LEN; i++)
+  {
+    uint32_t low_bound = i;
+    uint32_t high_bound = i;
 
+    float_t current_freq = (i) / (2 * Te * (FFT_BUFF_LEN - 1));
 
-		float_t current_freq = (i) / (2 * Te * (FFT_BUFF_LEN - 1));
+    while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
+            (current_freq / smoothing_factor)) &&
+           (low_bound > 0))
+    {
+      low_bound--;
+    }
+    low_bound++;
 
-		while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
-		(current_freq / smoothing_factor)) &&
-				(low_bound > 0)) {
-			low_bound--;
-		}
-		low_bound++;
+    while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
+            (current_freq * smoothing_factor)) &&
+           (high_bound < FFT_BUFF_LEN))
+    {
+      high_bound++;
+    }
+    high_bound--;
 
-		while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
-				(current_freq * smoothing_factor)) &&
-				(high_bound < FFT_BUFF_LEN)) {
-			high_bound++;
-		}
-		high_bound--;
+    filtering_low_index_list[i - 1] = i - low_bound;
+    filtering_high_index_list[i - 1] = high_bound - i;
+  }
 
-		filtering_low_index_list[i-1] = i - low_bound;
-		filtering_high_index_list[i-1] = high_bound - i;
-	}
-
-
-	u8g2_Setup_ssd1306_i2c_128x64_noname_1(&u8g2, U8G2_R0,(u8x8_msg_cb) u8x8_byte_stm32_hw_i2c,(u8x8_msg_cb) u8x8_stm32_gpio_and_delay);  // init u8g2 structure
-	u8g2_InitDisplay(&u8g2); // send init sequence to the display, display is in sleep mode after this,
-	u8g2_SetPowerSave(&u8g2, 0); // wake up display
-	u8g2_ClearDisplay(&u8g2);
-	u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-	do {
-		u8g2_DrawStr(&u8g2,6,14, "Press USER to start");
-		u8g2_DrawFrame(&u8g2,50 -12, 35 - 12, 25,25);
-		u8g2_DrawCircle(&u8g2, 50, 35, 8, U8G2_DRAW_ALL);
-		u8g2_DrawLine(&u8g2, 68,35,95,35);
-		u8g2_DrawLine(&u8g2, 68,35,78,30);
-		u8g2_DrawLine(&u8g2, 68,35,78,40);
-		u8g2_DrawStr(&u8g2,39,60, "USER");
-	} while (u8g2_NextPage(&u8g2));
+  u8g2_Setup_ssd1306_i2c_128x64_noname_1(&u8g2, U8G2_R0, (u8x8_msg_cb)u8x8_byte_stm32_hw_i2c, (u8x8_msg_cb)u8x8_stm32_gpio_and_delay); // init u8g2 structure
+  u8g2_InitDisplay(&u8g2);                                                                                                             // send init sequence to the display, display is in sleep mode after this,
+  u8g2_SetPowerSave(&u8g2, 0);                                                                                                         // wake up display
+  u8g2_ClearDisplay(&u8g2);
+  u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+  do
+  {
+    u8g2_DrawStr(&u8g2, 6, 14, "Press USER to start");
+    u8g2_DrawFrame(&u8g2, 50 - 12, 35 - 12, 25, 25);
+    u8g2_DrawCircle(&u8g2, 50, 35, 8, U8G2_DRAW_ALL);
+    u8g2_DrawLine(&u8g2, 68, 35, 95, 35);
+    u8g2_DrawLine(&u8g2, 68, 35, 78, 30);
+    u8g2_DrawLine(&u8g2, 68, 35, 78, 40);
+    u8g2_DrawStr(&u8g2, 39, 60, "USER");
+  } while (u8g2_NextPage(&u8g2));
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	while (1)
-	{
-		// State machine to control the identification prcedure
-		if (!PRBS_ACTIVE){
-			HAL_ADC_Start(&hadc3);
-			// Poll ADC1 Perihperal & TimeOut = 1mSec
-			HAL_ADC_PollForConversion(&hadc3, 1);
-			// Read The ADC Conversion Result & Map It To PWM DutyCycle
-			uint16_t ADC_VAL = HAL_ADC_GetValue(&hadc3);
-			PHASE_SHIFT = ADC_VAL * 100 / (1 << 12);
-			HAL_Delay(1);
-		}
-
-		if (HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin) & !BP_STATE_OLD & !COMPUTE_ACTIVE){
-
-			u8g2_ClearDisplay(&u8g2);
-			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-			do {
-				u8g2_DrawStr(&u8g2,5,30, "Computing parameters");
-				u8g2_DrawStr(&u8g2,24,50, "Please wait...");
-			} while (u8g2_NextPage(&u8g2));
-
-			noisy_current_sig = (int16_t *)malloc((SIG_BUFF_LEN + OFFSET) * sizeof(int16_t));
-			noisy_voltage_sig = (int16_t *)malloc(SIG_BUFF_LEN * sizeof(int16_t));
-			PRBS_ACTIVE = 1;
-			BP_STATE_OLD = 1;
-		}
-		else if((!HAL_GPIO_ReadPin(B1_GPIO_Port,B1_Pin)) & (BP_STATE_OLD)){
-			// HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-			BP_STATE_OLD = 0;
-		}
-		if (COMPUTE_ACTIVE){
-
-			/* 			Process the signals				*/
-
-			int32_t noisy_mean = 0;
-			int16_t low_threshold = -16;
-			int16_t high_threshold = 16;
-			for(uint16_t i=0;i < SIG_BUFF_LEN;i++){
-				noisy_mean+=noisy_current_sig[i];
-
-				if (noisy_voltage_sig[i] < low_threshold){
-					noisy_voltage_sig[i]= -Vcc;
-				}
-				else if (noisy_voltage_sig[i] > high_threshold){
-					noisy_voltage_sig[i]= Vcc;
-				}
-				else{
-					noisy_voltage_sig[i]= 0;
-				}
-			}
-			for (int i = SIG_BUFF_LEN;i < SIG_BUFF_LEN + OFFSET;i++){
-				noisy_mean+=noisy_current_sig[i];
-			}
-
-
-			noisy_mean/=(SIG_BUFF_LEN+OFFSET);
-			for(uint16_t i=0;i < SIG_BUFF_LEN + OFFSET;i++){
-				noisy_current_sig[i]-=noisy_mean;
-			}
-
-			/* 			Send the signals via UART		*/
-
-//			char message[100];
-//			sprintf(message, "index,nc,nv\n");
-//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-//			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
-//				sprintf(message, "%d,%d,%d\n",i,noisy_current_sig[i],noisy_voltage_sig[i]);
-//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//			}
-
-			/*		Transform signals into float32		*/
-
-			float_t *noisy_current_sig_float = (float_t *) malloc(SIG_BUFF_LEN * sizeof(float_t));
-
-			if (noisy_current_sig_float == NULL) {
-				Error_Handler();
-			}
-
-			for(uint16_t i=0;i <SIG_BUFF_LEN;i++){
-				noisy_current_sig_float[i] = noisy_current_sig[i+OFFSET] * Q;
-			}
-			free(noisy_current_sig);
-
-			float_t *noisy_voltage_sig_float = (float_t *) malloc(SIG_BUFF_LEN * sizeof(float_t));
-
-			if (noisy_voltage_sig_float == NULL) {
-				Error_Handler();
-			}
-
-			for(uint16_t i=0;i <SIG_BUFF_LEN;i++){
-				noisy_voltage_sig_float[i] = noisy_voltage_sig[i];
-			}
-			free(noisy_voltage_sig);
-
-			/* 			Compute FFT of the signals			*/
-
-			size_t memlen = 40278;
-			void* mem = malloc(memlen * sizeof(char));
-
-			kiss_fftr_cfg cfg = kiss_fftr_alloc(SIG_BUFF_LEN, 0, mem, (size_t *)&memlen);
+  while (1)
+  {
+    // State machine to control the identification prcedure
+    if (!PRBS_ACTIVE)
+    {
+      HAL_ADC_Start(&hadc3);
+      // Poll ADC1 Perihperal & TimeOut = 1mSec
+      HAL_ADC_PollForConversion(&hadc3, 1);
+      // Read The ADC Conversion Result & Map It To PWM DutyCycle
+      uint16_t ADC_VAL = HAL_ADC_GetValue(&hadc3);
+      PHASE_SHIFT = ADC_VAL * 100 / (1 << 12);
+      HAL_Delay(1);
+    }
+
+    if (HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin) & !BP_STATE_OLD & !COMPUTE_ACTIVE)
+    {
+
+      u8g2_ClearDisplay(&u8g2);
+      u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+      do
+      {
+        u8g2_DrawStr(&u8g2, 5, 30, "Computing parameters");
+        u8g2_DrawStr(&u8g2, 24, 50, "Please wait...");
+      } while (u8g2_NextPage(&u8g2));
+
+      noisy_current_sig = (int16_t *)malloc((SIG_BUFF_LEN + OFFSET) * sizeof(int16_t));
+      noisy_voltage_sig = (int16_t *)malloc(SIG_BUFF_LEN * sizeof(int16_t));
+      PRBS_ACTIVE = 1;
+      BP_STATE_OLD = 1;
+    }
+    else if ((!HAL_GPIO_ReadPin(B1_GPIO_Port, B1_Pin)) & (BP_STATE_OLD))
+    {
+      // HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
+      BP_STATE_OLD = 0;
+    }
+    if (COMPUTE_ACTIVE)
+    {
+
+      /* 			Process the signals				*/
+
+      int32_t noisy_mean = 0;
+      int16_t low_threshold = -16;
+      int16_t high_threshold = 16;
+      for (uint16_t i = 0; i < SIG_BUFF_LEN; i++)
+      {
+        noisy_mean += noisy_current_sig[i];
+
+        if (noisy_voltage_sig[i] < low_threshold)
+        {
+          noisy_voltage_sig[i] = -Vcc;
+        }
+        else if (noisy_voltage_sig[i] > high_threshold)
+        {
+          noisy_voltage_sig[i] = Vcc;
+        }
+        else
+        {
+          noisy_voltage_sig[i] = 0;
+        }
+      }
+      for (int i = SIG_BUFF_LEN; i < SIG_BUFF_LEN + OFFSET; i++)
+      {
+        noisy_mean += noisy_current_sig[i];
+      }
+
+      noisy_mean /= (SIG_BUFF_LEN + OFFSET);
+      for (uint16_t i = 0; i < SIG_BUFF_LEN + OFFSET; i++)
+      {
+        noisy_current_sig[i] -= noisy_mean;
+      }
+
+      /* 			Send the signals via UART		*/
+
+      //			char message[100];
+      //			sprintf(message, "index,nc,nv\n");
+      //			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+      //			for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
+      //				sprintf(message, "%d,%d,%d\n",i,noisy_current_sig[i],noisy_voltage_sig[i]);
+      //				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+      //			}
+
+      /*		Transform signals into float32		*/
+
+      float_t *noisy_current_sig_float = (float_t *)malloc(SIG_BUFF_LEN * sizeof(float_t));
+
+      if (noisy_current_sig_float == NULL)
+      {
+        Error_Handler();
+      }
+
+      for (uint16_t i = 0; i < SIG_BUFF_LEN; i++)
+      {
+        noisy_current_sig_float[i] = noisy_current_sig[i + OFFSET] * Q;
+      }
+      free(noisy_current_sig);
+
+      float_t *noisy_voltage_sig_float = (float_t *)malloc(SIG_BUFF_LEN * sizeof(float_t));
+
+      if (noisy_voltage_sig_float == NULL)
+      {
+        Error_Handler();
+      }
 
-			kiss_fft_cpx * noisy_current_fft = (kiss_fft_cpx *) malloc(FFT_BUFF_LEN * sizeof(kiss_fft_cpx));
+      for (uint16_t i = 0; i < SIG_BUFF_LEN; i++)
+      {
+        noisy_voltage_sig_float[i] = noisy_voltage_sig[i];
+      }
+      free(noisy_voltage_sig);
 
-			if (noisy_current_fft == NULL) {
-				Error_Handler();
-			}
+      /* 			Compute FFT of the signals			*/
 
-			kiss_fftr(cfg, noisy_current_sig_float, noisy_current_fft);
+      size_t memlen = 40278;
+      void *mem = malloc(memlen * sizeof(char));
 
-			free(noisy_current_sig_float);
+      kiss_fftr_cfg cfg = kiss_fftr_alloc(SIG_BUFF_LEN, 0, mem, (size_t *)&memlen);
 
-			kiss_fft_cpx * noisy_voltage_fft = (kiss_fft_cpx *) malloc(FFT_BUFF_LEN * sizeof(kiss_fft_cpx));
+      kiss_fft_cpx *noisy_current_fft = (kiss_fft_cpx *)malloc(FFT_BUFF_LEN * sizeof(kiss_fft_cpx));
 
-			if (noisy_voltage_fft == NULL) {
-				Error_Handler();
-			}
+      if (noisy_current_fft == NULL)
+      {
+        Error_Handler();
+      }
+
+      kiss_fftr(cfg, noisy_current_sig_float, noisy_current_fft);
 
-			kiss_fftr(cfg, noisy_voltage_sig_float, noisy_voltage_fft);
+      free(noisy_current_sig_float);
+
+      kiss_fft_cpx *noisy_voltage_fft = (kiss_fft_cpx *)malloc(FFT_BUFF_LEN * sizeof(kiss_fft_cpx));
 
-			free(noisy_voltage_sig_float);
+      if (noisy_voltage_fft == NULL)
+      {
+        Error_Handler();
+      }
 
-			free(cfg);
+      kiss_fftr(cfg, noisy_voltage_sig_float, noisy_voltage_fft);
 
-			/* 			Send the FFT signals via UART		*/
+      free(noisy_voltage_sig_float);
 
-			//			HAL_Delay(500);
-			//			sprintf(message, "index,cr,ci,vr,vi\n");
-			//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			//			for(uint16_t i = 0; i <FFT_BUFF_LEN; i++){
-			//				sprintf(message, "%d,%f,%f,%f,%f\n",i,noisy_current_fft[i].r,noisy_current_fft[i].i,noisy_voltage_fft[i].r,noisy_voltage_fft[i].i);
-			//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-			//			}
+      free(cfg);
 
-			/* 			Computing of the raw impedance			*/
+      /* 			Send the FFT signals via UART		*/
+
+      //			HAL_Delay(500);
+      //			sprintf(message, "index,cr,ci,vr,vi\n");
+      //			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+      //			for(uint16_t i = 0; i <FFT_BUFF_LEN; i++){
+      //				sprintf(message, "%d,%f,%f,%f,%f\n",i,noisy_current_fft[i].r,noisy_current_fft[i].i,noisy_voltage_fft[i].r,noisy_voltage_fft[i].i);
+      //				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+      //			}
+
+      /* 			Computing of the raw impedance			*/
 
-			kiss_fft_cpx * sys_impedance = (kiss_fft_cpx *) malloc((FFT_BUFF_LEN-1) * sizeof(kiss_fft_cpx)); // -1 to avoid the 0Hz data
-
-			for(uint16_t i=0;i <FFT_BUFF_LEN-1;i++){
-				sys_impedance[i] = div_cpx(noisy_voltage_fft[i+1],noisy_current_fft[i+1]); // +1 for the 0Hz offset
-			}
-
-			free(noisy_current_fft);
-			free(noisy_voltage_fft);
-
-			/* 				Send the impedance via UART			*/
-
-			char message[100];
-			sprintf(message, "index,impedance_r,impedance_i\n");
-			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
-				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
-				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-			}
-			/* 	Filtering of the impedance (time shift correction)	*/
-
-//			for(uint16_t i=0;i <FFT_BUFF_LEN-1;i++){ //np.pi * 2 * sys_frequencies[i] * tau + 1j*np.pi
-//				kiss_fft_cpx phase_correction;
-//				float_t freq = (i+1) / (2 * Te * (FFT_BUFF_LEN - 1));
-//				phase_correction.r = cos(-2 * PI * freq * TAU + PI);
-//				phase_correction.i = sin(-2 * PI * freq * TAU + PI);
-//				sys_impedance[i] = mul_cpx(sys_impedance[i],phase_correction); // +1 for the 0Hz offset
-//			}
-
-			/* 			Smoothing of the impedance			*/
-
-
-			float_t *amplitudes = (float_t *) malloc((FFT_BUFF_LEN) * sizeof(float_t));
-			float_t *phases = (float_t *) malloc((FFT_BUFF_LEN) * sizeof(float_t));
-
-			amplitudes[0] = 0;
-			phases[0] = 0;
-
-			for (uint16_t i = 1; i < FFT_BUFF_LEN; i++) {
-				amplitudes[i]=amplitudes[i-1] + mag_cpx(sys_impedance[i-1]);
-				phases[i] = phases[i-1] + ang_cpx(sys_impedance[i-1]);
-			}
-
-			float_t phase_offset = 0;
-			uint16_t nbr_of_phases_added = 0;
-
-			for (uint16_t i = 1; i < FFT_BUFF_LEN; i++) {
-				uint32_t low_bound = i - filtering_low_index_list[i-1];
-				uint32_t high_bound = i + filtering_high_index_list[i-1];
-
-				float_t current_freq = (i) / (2 * Te * (FFT_BUFF_LEN - 1));
-
-				//
-				//				while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
-				//				(current_freq / smoothing_factor)) &&
-				//						(low_bound > 0)) {
-				//					low_bound--;
-				//				}
-				//				low_bound++;
-				//
-				//				while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
-				//						(current_freq * smoothing_factor)) &&
-				//						(high_bound < FFT_BUFF_LEN-1)) {
-				//					high_bound++;
-				//				}
-				//				high_bound--;
-
-				float_t amplitude = 0;
-				float_t phase = 0;
-
-				amplitude = amplitudes[high_bound] - amplitudes[low_bound-1];
-				phase += phases[high_bound] - phases[low_bound-1];
-
-				amplitude /= (high_bound - low_bound + 1);
-				phase /= (high_bound - low_bound + 1);
-
-				sys_impedance[i-1].r = amplitude*cos(phase);
-				sys_impedance[i-1].i = amplitude*sin(phase);
-
-				if (current_freq > 75000 && current_freq < 95000){ // Used to center the phase plot in the 75kHz to 95kHz region
-					phase_offset -= phase;
-					nbr_of_phases_added ++;
-				}
-
-			}
-
-			free(amplitudes);
-			free(phases);
-
-			/* 					Centring of the phase				*/
-
-			phase_offset /= nbr_of_phases_added;
-
-			for (uint16_t i = 0; i < FFT_BUFF_LEN-1; i++) {
-				kiss_fft_cpx phase_correction;
-				phase_correction.r = cos(phase_offset);
-				phase_correction.i = sin(phase_offset);
-				sys_impedance[i] = mul_cpx(sys_impedance[i],phase_correction);
-			}
-
-
-			/* 			Send the smoothed impedance via UART		*/
-
-//			HAL_Delay(200);
-//			char message[300];
-//			sprintf(message, "index,impedance_r,impedance_i\n");
-//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-//			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
-//				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
-//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//			}
-
-			/* 				Compute the input tensor				*/
-
-			for(uint8_t i = 0; i < 15; i++){
-				//float_t freq = (index_list[i]+1) / (2 * Te * (FFT_BUFF_LEN - 1));
-				input_tensor[i].r = sys_impedance[index_list[i]].r ;// - R1;
-				input_tensor[i].i = sys_impedance[index_list[i]].i ;// - PI*2*freq*L1 + 1/(2*PI*freq*C1);
-			}
-
-			free(sys_impedance);
-
-			/* 			Send the input tensor via UART				*/
-
-//			HAL_Delay(500);
-//			sprintf(message, "index,value\n");
-//			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-//			for(uint16_t i = 0; i <15; i++){
-//				sprintf(message, "%d,%f\n",i*2,mag_cpx(input_tensor[i]));
-//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//				sprintf(message, "%d,%f\n",i*2+1,ang_cpx(input_tensor[i]));
-//				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//			}
-
-
-			/* 			Compute neural network inference			*/
-
-			for(uint16_t i = 0; i <15; i++){
-				in_data[i*2] = mag_cpx(input_tensor[i]);
-				in_data[i*2+1] = ang_cpx(input_tensor[i]);
-			}
-
-			aiRun(in_data,out_data);
-
-
-			float_t R_lin = out_data[0];
-			float_t M_lin = out_data[1];
-
-			float_t R = delinearize_R(R_lin);
-			float_t M = delinearize_M(M_lin);
-
-			display_oled(R,M);
-
-			COMPUTE_ACTIVE = 0;
-		}
+      kiss_fft_cpx *sys_impedance = (kiss_fft_cpx *)malloc((FFT_BUFF_LEN - 1) * sizeof(kiss_fft_cpx)); // -1 to avoid the 0Hz data
+
+      for (uint16_t i = 0; i < FFT_BUFF_LEN - 1; i++)
+      {
+        sys_impedance[i] = div_cpx(noisy_voltage_fft[i + 1], noisy_current_fft[i + 1]); // +1 for the 0Hz offset
+      }
+
+      free(noisy_current_fft);
+      free(noisy_voltage_fft);
+
+      /* 				Send the impedance via UART			*/
+
+      char message[100];
+      sprintf(message, "index,impedance_r,impedance_i\n");
+      HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+      for (uint16_t i = 0; i < FFT_BUFF_LEN - 1; i++)
+      {
+        sprintf(message, "%d,%f,%f\n", i, sys_impedance[i].r, sys_impedance[i].i);
+        HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+      }
+      /* 	Filtering of the impedance (time shift correction)	*/
+
+      //			for(uint16_t i=0;i <FFT_BUFF_LEN-1;i++){ //np.pi * 2 * sys_frequencies[i] * tau + 1j*np.pi
+      //				kiss_fft_cpx phase_correction;
+      //				float_t freq = (i+1) / (2 * Te * (FFT_BUFF_LEN - 1));
+      //				phase_correction.r = cos(-2 * PI * freq * TAU + PI);
+      //				phase_correction.i = sin(-2 * PI * freq * TAU + PI);
+      //				sys_impedance[i] = mul_cpx(sys_impedance[i],phase_correction); // +1 for the 0Hz offset
+      //			}
+
+      /* 			Smoothing of the impedance			*/
+
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+      float_t *amplitudes = (float_t *)malloc((FFT_BUFF_LEN) * sizeof(float_t));
+      float_t *phases = (float_t *)malloc((FFT_BUFF_LEN) * sizeof(float_t));
+
+      amplitudes[0] = 0;
+      phases[0] = 0;
+
+      for (uint16_t i = 1; i < FFT_BUFF_LEN; i++)
+      {
+        amplitudes[i] = amplitudes[i - 1] + mag_cpx(sys_impedance[i - 1]);
+        phases[i] = phases[i - 1] + ang_cpx(sys_impedance[i - 1]);
+      }
+
+      float_t phase_offset = 0;
+      uint16_t nbr_of_phases_added = 0;
+
+      //			for (uint16_t j = 0; j <15; j++) {
+      //				int i = index_list[j];
+      for (uint16_t i = 1; i < FFT_BUFF_LEN; i++)
+      {
+        uint32_t low_bound = i - filtering_low_index_list[i - 1];
+        uint32_t high_bound = i + filtering_high_index_list[i - 1];
+
+        float_t current_freq = (i) / (2 * Te * (FFT_BUFF_LEN - 1));
+
+        //
+        //				while (((low_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) >
+        //				(current_freq / smoothing_factor)) &&
+        //						(low_bound > 0)) {
+        //					low_bound--;
+        //				}
+        //				low_bound++;
+        //
+        //				while (((high_bound) / (2 * Te * (FFT_BUFF_LEN - 1)) <
+        //						(current_freq * smoothing_factor)) &&
+        //						(high_bound < FFT_BUFF_LEN-1)) {
+        //					high_bound++;
+        //				}
+        //				high_bound--;
+
+        float_t amplitude = 0;
+        float_t phase = 0;
+
+        amplitude = amplitudes[high_bound] - amplitudes[low_bound - 1];
+        phase += phases[high_bound] - phases[low_bound - 1];
+
+        amplitude /= (high_bound - low_bound + 1);
+        phase /= (high_bound - low_bound + 1);
+
+        sys_impedance[i - 1].r = amplitude * cos(phase);
+        sys_impedance[i - 1].i = amplitude * sin(phase);
+
+        if (current_freq > 75000 && current_freq < 95000)
+        { // Used to center the phase plot in the 75kHz to 95kHz region
+          phase_offset -= phase;
+          nbr_of_phases_added++;
+        }
+      }
+
+      free(amplitudes);
+      free(phases);
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+      /* 					Centring of the phase				*/
+
+      phase_offset /= nbr_of_phases_added;
+
+      //			for (uint16_t j = 0; j <15; j++) {
+      //				int i = index_list[j];
+      for (uint16_t i = 0; i < FFT_BUFF_LEN - 1; i++)
+      {
+        kiss_fft_cpx phase_correction;
+        phase_correction.r = cos(phase_offset);
+        phase_correction.i = sin(phase_offset);
+        sys_impedance[i] = mul_cpx(sys_impedance[i], phase_correction);
+      }
+
+      /* 			Send the smoothed impedance via UART		*/
+
+      //			HAL_Delay(200);
+      //			char message[300];
+      //			sprintf(message, "index,impedance_r,impedance_i\n");
+      //			HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+      //			for(uint16_t i = 0; i <FFT_BUFF_LEN-1; i++){
+      //				sprintf(message, "%d,%f,%f\n",i,sys_impedance[i].r,sys_impedance[i].i);
+      //				HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+      //			}
+
+      /* 				Compute the input tensor				*/
+
+      for (uint8_t i = 0; i < 15; i++)
+      {
+        // float_t freq = (index_list[i]+1) / (2 * Te * (FFT_BUFF_LEN - 1));
+        input_tensor[i].r = sys_impedance[index_list[i]].r; // - R1;
+        input_tensor[i].i = sys_impedance[index_list[i]].i; // - PI*2*freq*L1 + 1/(2*PI*freq*C1);
+      }
+
+      free(sys_impedance);
+
+      /* 			Send the input tensor via UART				*/
+
+      HAL_Delay(500);
+      sprintf(message, "index,value\n");
+      HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+      for (uint16_t i = 0; i < 15; i++)
+      {
+        sprintf(message, "%d,%f\n", i * 2, mag_cpx(input_tensor[i]));
+        HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+        sprintf(message, "%d,%f\n", i * 2 + 1, ang_cpx(input_tensor[i]));
+        HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+      }
+
+      /* 			Compute neural network inference			*/
+
+      for (uint16_t i = 0; i < 15; i++)
+      {
+        in_data[i * 2] = mag_cpx(input_tensor[i]);
+        in_data[i * 2 + 1] = ang_cpx(input_tensor[i]);
+      }
+
+      aiRun(in_data, out_data);
+
+      float_t R_lin = out_data[0];
+      float_t M_lin = out_data[1];
+
+      float_t R = delinearize_R(R_lin);
+      float_t M = delinearize_M(M_lin);
+
+      display_oled(R, M);
+
+      COMPUTE_ACTIVE = 0;
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	}
+  }
   /* USER CODE END 3 */
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
@@ -581,9 +610,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -596,10 +624,10 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief ADC1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief ADC1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_ADC1_Init(void)
 {
 
@@ -615,7 +643,7 @@ static void MX_ADC1_Init(void)
   /* USER CODE END ADC1_Init 1 */
 
   /** Common config
-  */
+   */
   hadc1.Instance = ADC1;
   hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
@@ -638,7 +666,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configure the ADC multi-mode
-  */
+   */
   multimode.Mode = ADC_MODE_INDEPENDENT;
   if (HAL_ADCEx_MultiModeConfigChannel(&hadc1, &multimode) != HAL_OK)
   {
@@ -646,7 +674,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configure Regular Channel
-  */
+   */
   sConfig.Channel = ADC_CHANNEL_1;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
@@ -660,14 +688,13 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
-
 }
 
 /**
-  * @brief ADC2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief ADC2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_ADC2_Init(void)
 {
 
@@ -682,7 +709,7 @@ static void MX_ADC2_Init(void)
   /* USER CODE END ADC2_Init 1 */
 
   /** Common config
-  */
+   */
   hadc2.Instance = ADC2;
   hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc2.Init.Resolution = ADC_RESOLUTION_6B;
@@ -705,7 +732,7 @@ static void MX_ADC2_Init(void)
   }
 
   /** Configure Regular Channel
-  */
+   */
   sConfig.Channel = ADC_CHANNEL_7;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
@@ -721,14 +748,13 @@ static void MX_ADC2_Init(void)
   /* USER CODE BEGIN ADC2_Init 2 */
 
   /* USER CODE END ADC2_Init 2 */
-
 }
 
 /**
-  * @brief ADC3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief ADC3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_ADC3_Init(void)
 {
 
@@ -744,7 +770,7 @@ static void MX_ADC3_Init(void)
   /* USER CODE END ADC3_Init 1 */
 
   /** Common config
-  */
+   */
   hadc3.Instance = ADC3;
   hadc3.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV4;
   hadc3.Init.Resolution = ADC_RESOLUTION_12B;
@@ -767,7 +793,7 @@ static void MX_ADC3_Init(void)
   }
 
   /** Configure the ADC multi-mode
-  */
+   */
   multimode.Mode = ADC_MODE_INDEPENDENT;
   if (HAL_ADCEx_MultiModeConfigChannel(&hadc3, &multimode) != HAL_OK)
   {
@@ -775,7 +801,7 @@ static void MX_ADC3_Init(void)
   }
 
   /** Configure Regular Channel
-  */
+   */
   sConfig.Channel = ADC_CHANNEL_12;
   sConfig.Rank = ADC_REGULAR_RANK_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_2CYCLES_5;
@@ -789,14 +815,13 @@ static void MX_ADC3_Init(void)
   /* USER CODE BEGIN ADC3_Init 2 */
 
   /* USER CODE END ADC3_Init 2 */
-
 }
 
 /**
-  * @brief CRC Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief CRC Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_CRC_Init(void)
 {
 
@@ -820,14 +845,13 @@ static void MX_CRC_Init(void)
   /* USER CODE BEGIN CRC_Init 2 */
 
   /* USER CODE END CRC_Init 2 */
-
 }
 
 /**
-  * @brief I2C1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief I2C1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_I2C1_Init(void)
 {
 
@@ -853,14 +877,14 @@ static void MX_I2C1_Init(void)
   }
 
   /** Configure Analogue filter
-  */
+   */
   if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_DISABLE) != HAL_OK)
   {
     Error_Handler();
   }
 
   /** Configure Digital filter
-  */
+   */
   if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
   {
     Error_Handler();
@@ -868,14 +892,13 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
-
 }
 
 /**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM1_Init(void)
 {
 
@@ -951,14 +974,13 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 2 */
   HAL_TIM_MspPostInit(&htim1);
-
 }
 
 /**
-  * @brief TIM3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM3_Init(void)
 {
 
@@ -1013,21 +1035,20 @@ static void MX_TIM3_Init(void)
   }
   __HAL_TIM_ENABLE_OCxPRELOAD(&htim3, TIM_CHANNEL_2);
   /* USER CODE BEGIN TIM3_Init 2 */
-	HAL_TIM_Base_Start(&htim3);
-	HAL_TIM_OC_Start_IT(&htim3,TIM_CHANNEL_1);
-	HAL_TIM_OC_Start(&htim3,TIM_CHANNEL_2);
-	// HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_3);
+  HAL_TIM_Base_Start(&htim3);
+  HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_1);
+  HAL_TIM_OC_Start(&htim3, TIM_CHANNEL_2);
+  // HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_3);
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
-
 }
 
 /**
-  * @brief USART2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART2_UART_Init(void)
 {
 
@@ -1068,12 +1089,11 @@ static void MX_USART2_UART_Init(void)
   /* USER CODE BEGIN USART2_Init 2 */
 
   /* USER CODE END USART2_Init 2 */
-
 }
 
 /**
-  * Enable DMA controller clock
-  */
+ * Enable DMA controller clock
+ */
 static void MX_DMA_Init(void)
 {
 
@@ -1089,19 +1109,18 @@ static void MX_DMA_Init(void)
   /* DMA2_Channel1_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Channel1_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Channel1_IRQn);
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -1129,302 +1148,327 @@ static void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
 void HAL_TIM_OC_DelayElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1){
-		if (PRBS_ACTIVE){
-			int8_t State = PRBS();
-			htim->Instance->CCR2 = PHASE_SHIFT + State*PRBS_AMPLITUDE;
-		}
-		else htim->Instance->CCR2 = PHASE_SHIFT;
-	}
+  if (htim->Instance == TIM3 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+  {
+    if (PRBS_ACTIVE)
+    {
+      int8_t State = PRBS();
+      htim->Instance->CCR2 = PHASE_SHIFT + State * PRBS_AMPLITUDE;
+    }
+    else
+      htim->Instance->CCR2 = PHASE_SHIFT;
+  }
 }
 
+int8_t PRBS()
+{
+  static uint16_t current_val = 1;
+  static uint16_t counter = 0;
+  current_val = ((current_val << 1) | (((current_val >> 9) ^ (current_val >> 6)) & 0x1)) & 0x3FF;
+  counter += 1;
 
-int8_t PRBS(){
-	static uint16_t current_val = 1;
-	static uint16_t counter = 0;
-	current_val = ((current_val << 1) | (((current_val >> 9) ^ (current_val >> 6)) & 0x1)) & 0x3FF;
-	counter +=1;
+  if (counter == PRBS_period - 2)
+  {
+    //		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
+    NOISE_ACTIVE = 1;
+    HAL_TIM_Base_Start(&htim1);
+    HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_1);
+    HAL_ADC_Start_DMA(&hadc1, (int16_t *)noisy_current_sig, SIG_BUFF_LEN + OFFSET); // Warning is normal here, we want to move int16_t
+    HAL_ADC_Start_DMA(&hadc2, (int16_t *)noisy_voltage_sig, SIG_BUFF_LEN);          // but the HAL is configured for uint32_t
+  }
+  if (counter == 2 * PRBS_period)
+  {
+    counter = 0;
+    HAL_TIM_OC_Stop(&htim1, TIM_CHANNEL_1);
+    HAL_TIM_Base_Stop(&htim1);
+    PRBS_ACTIVE = 0;
+    NOISE_ACTIVE = 0;
+    //		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
+    COMPUTE_ACTIVE = 1;
+  }
 
-	if (counter == PRBS_period-2){
-//		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		NOISE_ACTIVE =1;
-		HAL_TIM_Base_Start(&htim1);
-		HAL_TIM_OC_Start(&htim1,TIM_CHANNEL_1);
-		HAL_ADC_Start_DMA(&hadc1,(int16_t *) noisy_current_sig ,SIG_BUFF_LEN + OFFSET); // Warning is normal here, we want to move int16_t
-		HAL_ADC_Start_DMA(&hadc2,(int16_t *) noisy_voltage_sig ,SIG_BUFF_LEN); // but the HAL is configured for uint32_t
-	}
-	if (counter == 2*PRBS_period){
-		counter = 0;
-		HAL_TIM_OC_Stop(&htim1,TIM_CHANNEL_1);
-		HAL_TIM_Base_Stop(&htim1);
-		PRBS_ACTIVE = 0;
-		NOISE_ACTIVE = 0;
-//		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		COMPUTE_ACTIVE =1;
-	}
-
-	return (current_val & 0x1) * 2 - 1;
-
+  return (current_val & 0x1) * 2 - 1;
 }
 
-void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	HAL_ADC_Stop_DMA(hadc);
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+  HAL_ADC_Stop_DMA(hadc);
 }
 
 // Complex addition
-kiss_fft_cpx add_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2) {
-	kiss_fft_cpx c_out;
-	c_out.r = c1.r + c2.r;
-	c_out.i = c1.i + c2.i;
-	return c_out;
+kiss_fft_cpx add_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2)
+{
+  kiss_fft_cpx c_out;
+  c_out.r = c1.r + c2.r;
+  c_out.i = c1.i + c2.i;
+  return c_out;
 }
 
 // Complex substraction
-kiss_fft_cpx sub_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2) {
-	kiss_fft_cpx c_out;
-	c_out.r = c1.r - c2.r;
-	c_out.i = c1.i - c2.i;
-	return c_out;
+kiss_fft_cpx sub_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2)
+{
+  kiss_fft_cpx c_out;
+  c_out.r = c1.r - c2.r;
+  c_out.i = c1.i - c2.i;
+  return c_out;
 }
 
 // Complex multiplication
-kiss_fft_cpx mul_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2) {
-	kiss_fft_cpx c_out;
-	c_out.r = c1.r * c2.r - c1.i * c2.i;
-	c_out.i = c1.i * c2.r + c1.r * c2.i;
-	return c_out;
+kiss_fft_cpx mul_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2)
+{
+  kiss_fft_cpx c_out;
+  c_out.r = c1.r * c2.r - c1.i * c2.i;
+  c_out.i = c1.i * c2.r + c1.r * c2.i;
+  return c_out;
 }
 
 // Complex division
-kiss_fft_cpx div_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2) {
-	kiss_fft_cpx c_out;
-	c_out.r = (c1.r * c2.r + c1.i * c2.i) / (c2.r * c2.r + c2.i * c2.i);
-	c_out.i = (c1.i * c2.r - c1.r * c2.i) / (c2.r * c2.r + c2.i * c2.i);
-	return c_out;
+kiss_fft_cpx div_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2)
+{
+  kiss_fft_cpx c_out;
+  c_out.r = (c1.r * c2.r + c1.i * c2.i) / (c2.r * c2.r + c2.i * c2.i);
+  c_out.i = (c1.i * c2.r - c1.r * c2.i) / (c2.r * c2.r + c2.i * c2.i);
+  return c_out;
 }
 
 // Magnitude
 float_t mag_cpx(kiss_fft_cpx c) { return sqrt(pow(c.r, 2) + pow(c.i, 2)); }
 
 // Angle
-float_t ang_cpx(kiss_fft_cpx c) {
-	float_t angle;
-	if (c.r == 0) {
-		angle = M_PI * (signbit(c.i) * -1);
-	} else {
-		angle = atan2(c.i, c.r);
-	}
-	return angle;
+float_t ang_cpx(kiss_fft_cpx c)
+{
+  float_t angle;
+  if (c.r == 0)
+  {
+    angle = M_PI * (signbit(c.i) * -1);
+  }
+  else
+  {
+    angle = atan2(c.i, c.r);
+  }
+  return angle;
 }
 
-int aiInit(void) {
-	ai_error err;
+int aiInit(void)
+{
+  ai_error err;
 
-	/* Create and initialize the c-model */
-	const ai_handle acts[] = { activations };
-	err = ai_network_create_and_init(&network, acts, NULL);
-	if (err.type != AI_ERROR_NONE) { Error_Handler(); }
+  /* Create and initialize the c-model */
+  const ai_handle acts[] = {activations};
+  err = ai_network_create_and_init(&network, acts, NULL);
+  if (err.type != AI_ERROR_NONE)
+  {
+    Error_Handler();
+  }
 
-	/* Reteive pointers to the model's input/output tensors */
-	ai_input = ai_network_inputs_get(network, NULL);
-	ai_output = ai_network_outputs_get(network, NULL);
+  /* Reteive pointers to the model's input/output tensors */
+  ai_input = ai_network_inputs_get(network, NULL);
+  ai_output = ai_network_outputs_get(network, NULL);
 
-	return 0;
+  return 0;
 }
 
-int aiRun(const void *in_data, void *out_data) {
-	ai_i32 n_batch;
-	ai_error err;
+int aiRun(const void *in_data, void *out_data)
+{
+  ai_i32 n_batch;
+  ai_error err;
 
-	/* 1 - Update IO handlers with the data payload */
-	ai_input[0].data = AI_HANDLE_PTR(in_data);
-	ai_output[0].data = AI_HANDLE_PTR(out_data);
+  /* 1 - Update IO handlers with the data payload */
+  ai_input[0].data = AI_HANDLE_PTR(in_data);
+  ai_output[0].data = AI_HANDLE_PTR(out_data);
 
-	/* 2 - Perform the inference */
-	n_batch = ai_network_run(network, &ai_input[0], &ai_output[0]);
-	if (n_batch != 1) {
-		err = ai_network_get_error(network);
-		return err.code;
-	};
+  /* 2 - Perform the inference */
+  n_batch = ai_network_run(network, &ai_input[0], &ai_output[0]);
+  if (n_batch != 1)
+  {
+    err = ai_network_get_error(network);
+    return err.code;
+  };
 
-	return 0;
+  return 0;
 }
 
-float_t delinearize_R(float_t R_lin){
-	float_t R = pow(10,R_lin*0.1);
-	return R;
-
+float_t delinearize_R(float_t R_lin)
+{
+  float_t R = pow(10, R_lin * 0.1);
+  return R;
 }
 
-float_t delinearize_M(float_t M_lin){
-	float_t M = pow(10,(M_lin * 0.1)) * (0.1 * SQRT_L1L2_uH);
-	return M;
+float_t delinearize_M(float_t M_lin)
+{
+  float_t M = pow(10, (M_lin * 0.1)) * (0.1 * SQRT_L1L2_uH);
+  return M;
 }
-
 
 u8x8_msg_cb u8x8_stm32_gpio_and_delay(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
-	switch (msg)
-	{
-	case U8X8_MSG_GPIO_AND_DELAY_INIT:
-		HAL_Delay(1);
-		break;
-	case U8X8_MSG_DELAY_MILLI:
-		HAL_Delay(arg_int);
-		break;
-	case U8X8_MSG_GPIO_DC:
-		break;
-	case U8X8_MSG_GPIO_RESET:
-		break;
-	}
-	return (u8x8_msg_cb)1;
+  switch (msg)
+  {
+  case U8X8_MSG_GPIO_AND_DELAY_INIT:
+    HAL_Delay(1);
+    break;
+  case U8X8_MSG_DELAY_MILLI:
+    HAL_Delay(arg_int);
+    break;
+  case U8X8_MSG_GPIO_DC:
+    break;
+  case U8X8_MSG_GPIO_RESET:
+    break;
+  }
+  return (u8x8_msg_cb)1;
 }
-
 
 u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
 {
-	/* u8g2/u8x8 will never send more than 32 bytes between START_TRANSFER and END_TRANSFER */
-	/* add extra byte for the i2c address */
-	static uint8_t buffer[34];
-	static uint8_t buf_idx;
-	uint8_t *data;
-	switch(msg)  {
-	case U8X8_MSG_BYTE_SEND:
-		data = (uint8_t *)arg_ptr;
-		while( arg_int > 0 )
-		{
-			buffer[buf_idx++] = *data;
-			data++;
-			arg_int--;
-		}
+  /* u8g2/u8x8 will never send more than 32 bytes between START_TRANSFER and END_TRANSFER */
+  /* add extra byte for the i2c address */
+  static uint8_t buffer[34];
+  static uint8_t buf_idx;
+  uint8_t *data;
+  switch (msg)
+  {
+  case U8X8_MSG_BYTE_SEND:
+    data = (uint8_t *)arg_ptr;
+    while (arg_int > 0)
+    {
+      buffer[buf_idx++] = *data;
+      data++;
+      arg_int--;
+    }
 
-		break;
-	case U8X8_MSG_BYTE_INIT:
-		/* add your custom code to init i2c subsystem */
-		break;
-	case U8X8_MSG_BYTE_SET_DC:
-		/* ignored for i2c */
-		break;
-	case U8X8_MSG_BYTE_START_TRANSFER:
-		buf_idx = 0;
-		break;
-	case U8X8_MSG_BYTE_END_TRANSFER:
-		while(HAL_I2C_STATE_READY != hi2c1.State);
-		HAL_I2C_Master_Transmit(&hi2c1, DEVICE_ADDRESS  << 1, (uint8_t *)buffer, buf_idx, HAL_TIMEOUT);
+    break;
+  case U8X8_MSG_BYTE_INIT:
+    /* add your custom code to init i2c subsystem */
+    break;
+  case U8X8_MSG_BYTE_SET_DC:
+    /* ignored for i2c */
+    break;
+  case U8X8_MSG_BYTE_START_TRANSFER:
+    buf_idx = 0;
+    break;
+  case U8X8_MSG_BYTE_END_TRANSFER:
+    while (HAL_I2C_STATE_READY != hi2c1.State)
+      ;
+    HAL_I2C_Master_Transmit(&hi2c1, DEVICE_ADDRESS << 1, (uint8_t *)buffer, buf_idx, HAL_TIMEOUT);
 
-		break;
-	default:
-		return 0;
-	}
-	return (u8x8_msg_cb)1;
+    break;
+  default:
+    return 0;
+  }
+  return (u8x8_msg_cb)1;
 }
 
-void display_oled(float_t R, float_t M){
-	if ((R < 999) & (R > 0) & (M > 0) & (M <999)){
-		char line_1[20];
-		char line_2[20];
-		sprintf(line_1, "R_l : %.2f Ohm", R);
-		sprintf(line_2, "M   : %.2f uH", M);
-		u8g2_ClearDisplay(&u8g2);
+void display_oled(float_t R, float_t M)
+{
+  if ((R < 999) & (R > 0) & (M > 0) & (M < 999))
+  {
+    char line_1[20];
+    char line_2[20];
+    sprintf(line_1, "R_l : %.2f Ohm", R);
+    sprintf(line_2, "M   : %.2f uH", M);
+    u8g2_ClearDisplay(&u8g2);
 
-		do {
-			u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
-			u8g2_DrawStr(&u8g2,0,30, "Estimation :");
-			u8g2_DrawStr(&u8g2,0,50 - 6,line_1);
-			u8g2_DrawStr(&u8g2,0,64 - 6, line_2);
-			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-			u8g2_DrawStr(&u8g2,0,14, "Press USER to restart");
+    do
+    {
+      u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
+      u8g2_DrawStr(&u8g2, 0, 30, "Estimation :");
+      u8g2_DrawStr(&u8g2, 0, 50 - 6, line_1);
+      u8g2_DrawStr(&u8g2, 0, 64 - 6, line_2);
+      u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+      u8g2_DrawStr(&u8g2, 0, 14, "Press USER to restart");
 
-		} while (u8g2_NextPage(&u8g2));
-	}
-	else{
-		u8g2_ClearDisplay(&u8g2);
-		do {
-			u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
-			u8g2_DrawStr(&u8g2,40,30,"Error..." );
-			u8g2_DrawStr(&u8g2,10,50 - 6,"Estimated values");
-			u8g2_DrawStr(&u8g2,25,64 - 6, "out of range");
-			u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
-			u8g2_DrawStr(&u8g2,0,14, "Press USER to restart");
+    } while (u8g2_NextPage(&u8g2));
+  }
+  else
+  {
+    u8g2_ClearDisplay(&u8g2);
+    do
+    {
+      u8g2_SetFont(&u8g2, u8g2_font_7x14_mf);
+      u8g2_DrawStr(&u8g2, 40, 30, "Error...");
+      u8g2_DrawStr(&u8g2, 10, 50 - 6, "Estimated values");
+      u8g2_DrawStr(&u8g2, 25, 64 - 6, "out of range");
+      u8g2_SetFont(&u8g2, u8g2_font_6x13_mf);
+      u8g2_DrawStr(&u8g2, 0, 14, "Press USER to restart");
 
-		} while (u8g2_NextPage(&u8g2));
-	}
+    } while (u8g2_NextPage(&u8g2));
+  }
 }
 
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-	/* User can add his own implementation to report the HAL error return state */
-	__disable_irq();
-	while (1)
-	{
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(500);
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(500);
 
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(250);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(250);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(250);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(250);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(250);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(250);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(250);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(250);
 
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
-		HAL_Delay(500);
-		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
-		HAL_Delay(500);
-	}
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
+    HAL_Delay(500);
+  }
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-	/* User can add his own implementation to report the file name and line number,
+  /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
