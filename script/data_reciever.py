@@ -21,7 +21,6 @@ import wpt_system_class as wpt
 # Board parameters
 PORT = "COM3"
 sampling_period = 1e-6
-Q = 6.6 / 4095 / 496 / 0.001  # Quantization factor (int -> Amp)
 
 # WPT system parameters
 L1 = 24e-6
@@ -45,11 +44,26 @@ def main() -> None:
 
     received = ser.readline().decode()
 
-    recieved_impedance = []
+    while received == "":
+        received = ser.readline().decode()
+
+    print("Receiving data, please wait...")
+
+    noisy_current, noisy_voltage = [], []
+
+    while received != "":
+        received = ser.readline().decode()
+        if "," in received:
+            print(received, end="")
+            i, nc, nv = received.split(",")
+            noisy_current.append(float(nc))
+            noisy_voltage.append(float(nv))
 
     while received == "":
         received = ser.readline().decode()
-    print("Receiving data, please wait...")
+
+    recieved_impedance = []
+
     while received != "":
         received = ser.readline().decode()
         if "," in received:
@@ -64,19 +78,21 @@ def main() -> None:
     while received != "":
         received = ser.readline().decode()
         if "," in received:
-            # print(received, end="")
             i, val = received.split(",")
             recieved_tensor.append(float(val))
 
     ser.close()
 
-    system_impedance = np.array(recieved_impedance)
-    sys_frequencies = list(
-        np.fft.rfftfreq(2 * (len(system_impedance)), sampling_period)
+    plot_signals(
+        noisy_current=(np.array(noisy_current)),
+        noisy_voltage=(np.array(noisy_voltage)),
+        sampling_period=sampling_period,
     )
-    sys_frequencies.pop()
+
+    system_impedance = np.array(recieved_impedance)
+
+    sys_frequencies = np.fft.rfftfreq(2 * (len(system_impedance)), sampling_period)[:-1]
     sys_frequencies[0] = 1
-    sys_frequencies = np.array(sys_frequencies)
 
     smooth_sys_impedance = fractional_decade_smoothing_impedance(
         impedances=system_impedance,
@@ -84,36 +100,15 @@ def main() -> None:
         fractional_factor=1.06,
     )
 
-    # plot_bode(
-    #     [
-    #         system_impedance,
-    #         smooth_sys_impedance,
-    #     ],
-    #     sys_frequencies,
-    #     forms=["x", "x"],
-    #     names=["raw impedance", "smoothed impedance"],
-    # )
-
-    phase_gain = -np.mean(
-        np.angle(
-            smooth_sys_impedance[
-                np.where((sys_frequencies < 95_000) & (sys_frequencies > 75_000))
-            ]
-        )
+    plot_bode(
+        [
+            system_impedance,
+            smooth_sys_impedance,
+        ],
+        sys_frequencies,
+        forms=["x", "x"],
+        names=["raw impedance", "smoothed impedance"],
     )
-    smooth_sys_impedance_centered = [
-        impedance * np.exp(1j * phase_gain) for impedance in smooth_sys_impedance
-    ]
-
-    # plot_bode(
-    #     [
-    #         smooth_sys_impedance,
-    #         smooth_sys_impedance_centered,
-    #     ],
-    #     sys_frequencies,
-    #     forms=["x", "x"],
-    #     names=["smoothed impedance", "phase centered"],
-    # )
 
     f0 = 85000
     L1 = 24 * 1e-6
@@ -121,8 +116,8 @@ def main() -> None:
     R1 = 0.075
     # M = 16.27 * 1e-6 # for a 5mm gap
     # M = 5.2345e-06  # for a 20mm gap
-    # M = 7.4129e-06  # for a 15mm gap
-    M = 6.01e-6
+    M = 7.4129e-06  # for a 15mm gap
+    # M = 6.01e-6
     L2 = 24 * 1e-6
     C2 = 151e-9  # 1 / ((2 * np.pi * f0) ** 2 * L2)
     R2 = 0.4
@@ -139,7 +134,7 @@ def main() -> None:
     # Create the NN input tensor
 
     input_tensor = nn_input_tensor(
-        sys_impedance=smooth_sys_impedance_centered,
+        sys_impedance=smooth_sys_impedance,
         sys_frequencies=sys_frequencies,
         L1=L1,
         R1=R1,
@@ -183,7 +178,7 @@ def main() -> None:
             abs(
                 (
                     abs(20 * np.log(model_impedance[i]))
-                    - abs(20 * np.log(smooth_sys_impedance_centered[i]))
+                    - abs(20 * np.log(smooth_sys_impedance[i]))
                 )
                 / abs(20 * np.log(model_impedance[i]))
             )
@@ -217,6 +212,7 @@ def main() -> None:
             # "Model w/ estimated param",
         ],
         f0=85_000,
+        tensor=recieved_tensor,
     )
 
 

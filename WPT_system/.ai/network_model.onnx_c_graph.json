@@ -700,7 +700,7 @@
         }
     ],
     "c_activations_count": 1,
-    "date_time": "Thu Mar 21 12:14:36 2024",
+    "date_time": "Wed May 15 14:03:01 2024",
     "model_name": "model",
     "tool_version": {
         "major": 1,
@@ -816,7 +816,7 @@
         "minor": 5,
         "micro": 0
     },
-    "model_signature": "77d8212f3884d53b0397dff92a2a9da4",
+    "model_signature": "7290c01f46ceea4090326d262d6e08a0",
     "params_alignment": 4,
     "activations": {"heap_overlay_pool": {
         "buffer_data_size": 0,

@@ -18,7 +18,7 @@ If you want to run more than juste the embedded project, it will be usefull to c
 ## Embedded project
 
 The `WPT_system` folder contain the STM32 CubeMX project. 
-To use it, open the folder with STM32CubeIDE, connect the board to the computer and click on `Run WPT_system Debug` to compile and upload the code on the board. Once done, the board can run an analysis when the USER button is pressed. If the lines 423 to 429 and 543 to 552 of `WPT_system\Core\Src\main.c` are left uncommented, the data are transfered through UART to be analysed and visualised with a computer. However, this slow down the estimation as the sending of the impedance through UART take around 10 sec.
+To use it, open the folder with STM32CubeIDE, connect the board to the computer and click on `Run WPT_system Debug` to compile and upload the code on the board. Once done, the board can run an analysis when the USER button is pressed. If the lines 286 to 293, 329 to 336 and 358 to 366 of `WPT_system\Core\Src\main.c` are left uncommented, the data are transfered through UART to be analysed and visualised with a computer. However, this slow down the estimation as the sending of the impedance through UART take around 10 sec.
 
 ## Neural Network
 
@@ -30,7 +30,7 @@ The `neural_network` folder contain scripts and class to create a dataset, train
 ## Python script
 
 The `script` folder contain the main script to analyse the data from an analysis, it enable the visualisation of the impedance and compare it with the model. An offline estimation of the parameters is made with the 
-To do so run `python script/data_receiver.py` wait for the script to print `Ready to receive data` before starting an identification by pushing the USER button on the board. Ensure that the lines 423 to 429 and 543 to 552 of `WPT_system\Core\Src\main.c` are left uncommented. 
+To do so run `python script/data_receiver.py` wait for the script to print `Ready to receive data` before starting an identification by pushing the USER button on the board. Ensure that the lines 286 to 293, 329 to 336 and 358 to 366 of `WPT_system\Core\Src\main.c` are uncommented. 
 
 
 

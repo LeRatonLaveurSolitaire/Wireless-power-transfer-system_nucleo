@@ -3,7 +3,12 @@ Plot functions to diplay recieved and processed data
 """
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 import numpy as np
+
+font = {"size": 12}
+
+plt.rc("font", **font)
 
 
 def plot_signals(
@@ -46,10 +51,11 @@ def plot_bode(
     names: list = None,
     forms: list = None,
     f0: float = None,
+    tensor=None,
 ):
 
-    min_freq, max_freq = 25_000, 250_000
-    # indexs = [199, 215, 232, 250, 270, 291, 314, 339, 366, 395, 426, 459, 496, 535, 577]
+    min_freq, max_freq = 25_000 / 1000, 250_000 / 1000
+    indexs = [199, 215, 232, 250, 270, 291, 314, 339, 366, 395, 426, 459, 496, 535, 577]
     plt.figure(figsize=(9, 6))
 
     # Magnitude plot
@@ -61,20 +67,20 @@ def plot_bode(
             name = names[i]
         if forms:
             form = forms[i]
-        plt.semilogx(frequencies, 20 * np.log10(magnitudes), form, label=name)
-        # if name == "mesurment":
-        #     plt.semilogx(
-        #         [frequencies[i] for i in indexs],
-        #         [20 * np.log10(magnitudes[i]) for i in indexs],
-        #         "og",
-        #         label="input tensor",
-        #     )
+        plt.semilogx(frequencies / 1000, 20 * np.log10(magnitudes), form, label=name)
+        if name == "mesurment":
+            plt.semilogx(
+                [frequencies[i] / 1000 for i in indexs],
+                [20 * np.log10(magnitudes[i]) for i in indexs],
+                "og",
+                label="input tensor",
+            )
     if f0 != None:
-        ax.axvline(x=f0, color="black", linestyle=":")
+        ax.axvline(x=f0 / 1000, color="black", linestyle=":")
         y_bot1 = 0
         y_top1 = 50
         ax.text(
-            f0,
+            f0 / 1000,
             y_bot1 - (y_top1 - y_bot1) * 0.1,
             r"$f0$",
             color="black",
@@ -82,12 +88,17 @@ def plot_bode(
             va="center",
         )
 
+    if tensor != None:
+        freqs = np.geomspace(50000, 144500, num=15, dtype=np.int64)
+        plt.semilogx(freqs, 20 * np.log10(tensor[::2]), ".", label="tensor")
+
     plt.title("Bode Plot")
     plt.ylabel("Magnitude (dB)")
     plt.legend()
     plt.grid()
     plt.xlim(min_freq, max_freq)
     plt.ylim(0, 50)
+    ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=False))
     # Phase plot
     ax = plt.subplot(2, 1, 2)
     for i, impedance in enumerate(impedances):
@@ -97,20 +108,20 @@ def plot_bode(
             name = names[i]
         if forms:
             form = forms[i]
-        plt.semilogx(frequencies, phases, form, label=name)
-        # if name == "mesurment":
-        #     plt.semilogx(
-        #         [frequencies[i] for i in indexs],
-        #         [phases[i] for i in indexs],
-        #         "og",
-        #         label="input tensor",
-        #     )
+        plt.semilogx(frequencies / 1000, phases, form, label=name)
+        if name == "mesurment":
+            plt.semilogx(
+                [frequencies[i] / 1000 for i in indexs],
+                [phases[i] for i in indexs],
+                "og",
+                label="input tensor",
+            )
     if f0 != None:
-        ax.axvline(x=f0, color="black", linestyle=":")
+        ax.axvline(x=f0 / 1000, color="black", linestyle=":")
         y_bot1 = ax.get_ylim()[0]
         y_top1 = ax.get_ylim()[1]
         ax.text(
-            f0,
+            f0 / 1000,
             y_bot1 - (y_top1 - y_bot1) * 0.1,
             r"$f0$",
             color="black",
@@ -118,10 +129,14 @@ def plot_bode(
             va="center",
         )
 
-    plt.xlabel("Frequency (Hz)")
+    if tensor != None:
+        freqs = np.geomspace(50000, 144500, num=15, dtype=np.int64)
+        plt.semilogx(freqs, 180 / np.pi * np.array(tensor[1::2]), ".", label="tensor")
+
+    plt.xlabel("Frequency (kHz)")
     plt.ylabel("Phase (degrees)")
     plt.legend()
     plt.grid()
     plt.xlim(min_freq, max_freq)
-
+    ax.xaxis.set_major_formatter(ScalarFormatter(useMathText=False))
     plt.show()

@@ -54,6 +54,7 @@ def fractional_decade_smoothing_impedance(
         smoothed_impedance = np.mean(np.absolute(impedances[indices])) * np.exp(
             1j * np.mean(np.angle(impedances[indices]))
         )
+        # smoothed_impedance = np.mean(impedances[indices])
         smoothed_impedances.append(smoothed_impedance)
 
     return np.array(smoothed_impedances)
