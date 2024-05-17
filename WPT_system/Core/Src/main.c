@@ -283,14 +283,14 @@ int main(void)
 
       /* 			Send the signals via UART		*/
 
-      //		char message[100];
-      //		sprintf(message, "index,nc,nv\n");
-      //		HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-      //		for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
-      //			sprintf(message, "%d,%f,%f\n",i, current_sig[i+OFFSET+5],voltage_sig[i+5]);
-      //			// sprintf(message, "%d,%ld,%ld\n",i, raw_current_sig[i+OFFSET+5],raw_voltage_sig[i+5]);
-      //			HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-      //		}
+//		char message[100];
+//		sprintf(message, "index,nc,nv\n");
+//		HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+//		for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
+//			sprintf(message, "%d,%f,%f\n",i, current_sig[i+OFFSET+5],voltage_sig[i+5]);
+//			// sprintf(message, "%d,%ld,%ld\n",i, raw_current_sig[i+OFFSET+5],raw_voltage_sig[i+5]);
+//			HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+//		}
 
       /* 			Compute FFT of the signals			*/
 
@@ -326,14 +326,14 @@ int main(void)
 
       /* 				Send the impedance via UART			*/
 
-      //	    HAL_Delay(500);
-      //      sprintf(message, "index,impedance_r,impedance_i\n");
-      //      HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-      //      for (uint16_t i = 0; i < FFT_BUFF_LEN; i++)
-      //      {
-      //        sprintf(message, "%d,%f,%f\n", i, impedance[2*i], impedance[2*i+1]);
-      //        HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-      //      }
+//		HAL_Delay(500);
+//		sprintf(message, "index,impedance_r,impedance_i\n");
+//		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+//		for (uint16_t i = 0; i < FFT_BUFF_LEN; i++)
+//		{
+//		  sprintf(message, "%d,%f,%f\n", i, impedance[2*i], impedance[2*i+1]);
+//		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+//		}
 
       /* 				Compute the input tensor				*/
 
@@ -355,15 +355,15 @@ int main(void)
 
       /* 			Send the input tensor via UART				*/
 
-      //		HAL_Delay(500);
-      //		sprintf(message, "index,value\n");
-      //		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-      //		for (uint16_t i = 0; i < 30; i++)
-      //		{
-      //		  sprintf(message, "%d,%f\n", i , in_data[i]);
-      //		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-      //
-      //		}
+//		HAL_Delay(500);
+//		sprintf(message, "index,value\n");
+//		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+//		for (uint16_t i = 0; i < 30; i++)
+//		{
+//		  sprintf(message, "%d,%f\n", i , in_data[i]);
+//		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+//
+//		}
 
       /* 			Compute neural network inference			*/
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);

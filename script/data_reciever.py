@@ -183,10 +183,7 @@ def main() -> None:
                 / abs(20 * np.log(model_impedance[i]))
             )
             + abs(
-                (
-                    np.angle(model_impedance[i])
-                    - np.angle(smooth_sys_impedance_centered[i])
-                )
+                (np.angle(model_impedance[i]) - np.angle(smooth_sys_impedance[i]))
                 / np.angle(model_impedance[i])
             )
         ) / 2
@@ -196,20 +193,16 @@ def main() -> None:
     plot_bode(
         [
             model_impedance,
-            # smooth_sys_impedance,
-            smooth_sys_impedance_centered,
-            # model2_impedance,
+            smooth_sys_impedance,
         ],
         sys_frequencies,
         forms=[
             "",
             "x",
-            # "r",
         ],
         names=[
             "Model",
             "mesurment",
-            # "Model w/ estimated param",
         ],
         f0=85_000,
         tensor=recieved_tensor,

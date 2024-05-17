@@ -68,13 +68,6 @@ def plot_bode(
         if forms:
             form = forms[i]
         plt.semilogx(frequencies / 1000, 20 * np.log10(magnitudes), form, label=name)
-        if name == "mesurment":
-            plt.semilogx(
-                [frequencies[i] / 1000 for i in indexs],
-                [20 * np.log10(magnitudes[i]) for i in indexs],
-                "og",
-                label="input tensor",
-            )
     if f0 != None:
         ax.axvline(x=f0 / 1000, color="black", linestyle=":")
         y_bot1 = 0
@@ -90,7 +83,7 @@ def plot_bode(
 
     if tensor != None:
         freqs = np.geomspace(50000, 144500, num=15, dtype=np.int64)
-        plt.semilogx(freqs, 20 * np.log10(tensor[::2]), ".", label="tensor")
+        plt.semilogx(freqs / 1000, 20 * np.log10(tensor[::2]), "o", label="tensor")
 
     plt.title("Bode Plot")
     plt.ylabel("Magnitude (dB)")
@@ -109,13 +102,6 @@ def plot_bode(
         if forms:
             form = forms[i]
         plt.semilogx(frequencies / 1000, phases, form, label=name)
-        if name == "mesurment":
-            plt.semilogx(
-                [frequencies[i] / 1000 for i in indexs],
-                [phases[i] for i in indexs],
-                "og",
-                label="input tensor",
-            )
     if f0 != None:
         ax.axvline(x=f0 / 1000, color="black", linestyle=":")
         y_bot1 = ax.get_ylim()[0]
@@ -131,7 +117,9 @@ def plot_bode(
 
     if tensor != None:
         freqs = np.geomspace(50000, 144500, num=15, dtype=np.int64)
-        plt.semilogx(freqs, 180 / np.pi * np.array(tensor[1::2]), ".", label="tensor")
+        plt.semilogx(
+            freqs / 1000, 180 / np.pi * np.array(tensor[1::2]), "o", label="tensor"
+        )
 
     plt.xlabel("Frequency (kHz)")
     plt.ylabel("Phase (degrees)")
