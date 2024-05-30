@@ -60,6 +60,8 @@
 #define DEVICE_ADDRESS 0b0111100
 #define TX_TIMEOUT 100
 
+// #define SEND_DATA
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -92,8 +94,15 @@ volatile uint8_t PRBS_AMPLITUDE = 20;
 volatile uint8_t NOISE_ACTIVE = 0;
 volatile uint8_t COMPUTE_ACTIVE = 0;
 
-int16_t *raw_current_sig;
-int16_t *raw_voltage_sig;
+
+int16_t raw_current_sig[SIG_BUFF_LEN + OFFSET + 15];
+int16_t raw_voltage_sig[SIG_BUFF_LEN + OFFSET + 15];
+float_t current_sig[SIG_BUFF_LEN + OFFSET + 15];
+float_t voltage_sig[SIG_BUFF_LEN + OFFSET + 15];
+float_t fft_current[SIG_BUFF_LEN];
+float_t fft_voltage[SIG_BUFF_LEN];
+float_t impedance[2 * FFT_BUFF_LEN];
+
 
 uint16_t index_list[] = {205, 221, 238, 257, 277, 299, 323, 348, 376, 405, 437, 471, 509, 549, 592};
 uint8_t filtering_low_index_list[] = {11, 12, 13, 14, 15, 16, 18, 19, 21, 22, 24, 26, 28, 31, 33};
@@ -253,8 +262,6 @@ int main(void)
         u8g2_DrawStr(&u8g2, 24, 50, "Please wait...");
       } while (u8g2_NextPage(&u8g2));
 
-      raw_current_sig = (int16_t *)malloc((SIG_BUFF_LEN + OFFSET + 15) * sizeof(int16_t));
-      raw_voltage_sig = (int16_t *)malloc((SIG_BUFF_LEN + OFFSET + 15) * sizeof(int16_t));
       PRBS_ACTIVE = 1;
       BP_STATE_OLD = 1;
     }
@@ -267,15 +274,12 @@ int main(void)
     {
 
       /* 			Signals	Scaling			*/
+
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
 
-      float_t *current_sig = (float_t *)malloc((SIG_BUFF_LEN + OFFSET + 15) * sizeof(float_t));
-      float_t *voltage_sig = (float_t *)malloc((SIG_BUFF_LEN + OFFSET + 15) * sizeof(float_t));
-
       arm_q15_to_float(raw_current_sig, current_sig, SIG_BUFF_LEN + OFFSET + 15);
-      free(raw_current_sig);
       arm_q15_to_float(raw_voltage_sig, voltage_sig, SIG_BUFF_LEN + OFFSET + 15);
-      free(raw_current_sig);
+
       arm_scale_f32(current_sig, Qi, current_sig, SIG_BUFF_LEN + OFFSET + 15);
       arm_scale_f32(voltage_sig, Qv, voltage_sig, SIG_BUFF_LEN + OFFSET + 15);
 
@@ -283,30 +287,25 @@ int main(void)
 
       /* 			Send the signals via UART		*/
 
-//		char message[100];
-//		sprintf(message, "index,nc,nv\n");
-//		HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
-//		for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
-//			sprintf(message, "%d,%f,%f\n",i, current_sig[i+OFFSET+5],voltage_sig[i+5]);
-//			// sprintf(message, "%d,%ld,%ld\n",i, raw_current_sig[i+OFFSET+5],raw_voltage_sig[i+5]);
-//			HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
-//		}
+#ifdef SEND_DATA
+		char message[100];
+		sprintf(message, "index,nc,nv\n");
+		HAL_UART_Transmit(&huart2,(uint8_t *) message, strlen(message), 100);
+		for(uint16_t i = 0; i <SIG_BUFF_LEN; i++){
+			sprintf(message, "%d,%f,%f\n",i, current_sig[i+OFFSET+5],voltage_sig[i+5]);
+			// sprintf(message, "%d,%ld,%ld\n",i, raw_current_sig[i+OFFSET+5],raw_voltage_sig[i+5]);
+			HAL_UART_Transmit(&huart2, (uint8_t *) message, strlen(message), 100);
+		}
+#endif
 
       /* 			Compute FFT of the signals			*/
 
-      float_t *fft_current = (float_t *)malloc((SIG_BUFF_LEN) * sizeof(float_t));
       arm_rfft_fast_f32(&fft_handler, (float_t *)current_sig + OFFSET + 5, fft_current, 0);
-      free(current_sig);
-
-      float_t *fft_voltage = (float_t *)malloc((SIG_BUFF_LEN) * sizeof(float_t));
       arm_rfft_fast_f32(&fft_handler, (float_t *)voltage_sig + 5, fft_voltage, 0);
-      free(voltage_sig);
 
       /* 			Computing of the raw impedance			*/
 
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
-
-      float_t *impedance = (float_t *)malloc((2 * FFT_BUFF_LEN) * sizeof(float_t));
 
       for (int i = 0; i < FFT_BUFF_LEN; i++)
       {
@@ -319,21 +318,20 @@ int main(void)
         impedance[2 * i + 1] = (v_i * c_r - v_r * c_i) / norm;
       }
 
-      free(fft_current);
-      free(fft_voltage);
-
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, DISABLE);
 
       /* 				Send the impedance via UART			*/
 
-//		HAL_Delay(500);
-//		sprintf(message, "index,impedance_r,impedance_i\n");
-//		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-//		for (uint16_t i = 0; i < FFT_BUFF_LEN; i++)
-//		{
-//		  sprintf(message, "%d,%f,%f\n", i, impedance[2*i], impedance[2*i+1]);
-//		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-//		}
+#ifdef SEND_DATA
+		HAL_Delay(500);
+		sprintf(message, "index,impedance_r,impedance_i\n");
+		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+		for (uint16_t i = 0; i < FFT_BUFF_LEN; i++)
+		{
+		  sprintf(message, "%d,%f,%f\n", i, impedance[2*i], impedance[2*i+1]);
+		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+		}
+#endif
 
       /* 				Compute the input tensor				*/
 
@@ -351,21 +349,23 @@ int main(void)
         in_data[i * 2] /= (filtering_low_index_list[i] + filtering_high_index_list[i] + 1);
         in_data[i * 2 + 1] /= (filtering_low_index_list[i] + filtering_high_index_list[i] + 1);
       }
-      free(impedance);
 
       /* 			Send the input tensor via UART				*/
 
-//		HAL_Delay(500);
-//		sprintf(message, "index,value\n");
-//		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-//		for (uint16_t i = 0; i < 30; i++)
-//		{
-//		  sprintf(message, "%d,%f\n", i , in_data[i]);
-//		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
-//
-//		}
+#ifdef SEND_DATA
+		HAL_Delay(500);
+		sprintf(message, "index,value\n");
+		HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+		for (uint16_t i = 0; i < 30; i++)
+		{
+		  sprintf(message, "%d,%f\n", i , in_data[i]);
+		  HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), 100);
+
+		}
+#endif
 
       /* 			Compute neural network inference			*/
+
       HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, ENABLE);
       aiRun(in_data, out_data);
 
@@ -845,10 +845,10 @@ static void MX_TIM3_Init(void)
   }
   __HAL_TIM_ENABLE_OCxPRELOAD(&htim3, TIM_CHANNEL_2);
   /* USER CODE BEGIN TIM3_Init 2 */
+
   HAL_TIM_Base_Start(&htim3);
   HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_1);
   HAL_TIM_OC_Start(&htim3, TIM_CHANNEL_2);
-  // HAL_TIM_OC_Start_IT(&htim3, TIM_CHANNEL_3);
 
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
@@ -986,12 +986,13 @@ int8_t PRBS()
 
   if (counter == PRBS_period - 2)
   {
-    //		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,ENABLE);
+
     NOISE_ACTIVE = 1;
     HAL_TIM_Base_Start(&htim1);
     HAL_TIM_OC_Start(&htim1, TIM_CHANNEL_1);
-    HAL_ADC_Start_DMA(&hadc1, (int16_t *)raw_current_sig, SIG_BUFF_LEN + OFFSET + 15);
-    HAL_ADC_Start_DMA(&hadc2, (int16_t *)raw_voltage_sig, SIG_BUFF_LEN + OFFSET + 15);
+    HAL_ADC_Start_DMA(&hadc1, (int16_t *)raw_current_sig, SIG_BUFF_LEN + OFFSET + 15); // Warning are normal here
+    HAL_ADC_Start_DMA(&hadc2, (int16_t *)raw_voltage_sig, SIG_BUFF_LEN + OFFSET + 15); // Warning are normal here
+
   }
   if (counter == 2 * PRBS_period)
   {
@@ -1000,7 +1001,6 @@ int8_t PRBS()
     HAL_TIM_Base_Stop(&htim1);
     PRBS_ACTIVE = 0;
     NOISE_ACTIVE = 0;
-    //		HAL_GPIO_WritePin(LD2_GPIO_Port,LD2_Pin,DISABLE);
     COMPUTE_ACTIVE = 1;
   }
 
@@ -1101,10 +1101,8 @@ u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
 
     break;
   case U8X8_MSG_BYTE_INIT:
-    /* add your custom code to init i2c subsystem */
     break;
   case U8X8_MSG_BYTE_SET_DC:
-    /* ignored for i2c */
     break;
   case U8X8_MSG_BYTE_START_TRANSFER:
     buf_idx = 0;
@@ -1123,7 +1121,7 @@ u8x8_msg_cb u8x8_byte_stm32_hw_i2c(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, v
 
 void display_oled(float_t R, float_t M)
 {
-  if ((R < 999) & (R > 0) & (M > 0) & (M < 999))
+  if ((R < 500) & (R > 0) & (M > 0) & (M < SQRT_L1L2_uH))
   {
     char line_1[20];
     char line_2[20];

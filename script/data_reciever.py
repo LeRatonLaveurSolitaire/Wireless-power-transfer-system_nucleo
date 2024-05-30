@@ -84,7 +84,7 @@ def main() -> None:
     ser.close()
 
     plot_signals(
-        noisy_current=(np.array(noisy_current)),
+        noisy_current=(np.array(noisy_current) / 2),
         noisy_voltage=(np.array(noisy_voltage)),
         sampling_period=sampling_period,
     )
