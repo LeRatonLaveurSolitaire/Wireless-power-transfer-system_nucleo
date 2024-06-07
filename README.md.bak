@@ -4,7 +4,7 @@ This is the repository of a parameters identification technique for a wireless p
 
 ## custom shield
 
-A shield was made for this purpose and source files can be found in the PCB_files folder.
+A shield was made for this purpose and source files can be found in the PCB_file folder.
 
 ![board](Board.png)
 
